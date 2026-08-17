@@ -1,0 +1,8 @@
+node_modules
+uploads
+*.log
+.env
+.git
+nginx
+README.md
+deploy.sh

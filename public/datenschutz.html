@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Datenschutzerklärung — SUBTITLED</title>
+  <meta name="robots" content="index, follow">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Schibsted+Grotesk:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --screen: #0B0B0D; --panel: #141416; --panel-2: #18181B; --line: #26262B;
+      --sub: #F2C230; --sub-dim: #8a6f1d; --paper: #F4F2EC; --dim: #8B8A93;
+      --font-display: "Bricolage Grotesque", sans-serif;
+      --font-ui: "Schibsted Grotesk", sans-serif;
+      --font-mono: "Spline Sans Mono", monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { color-scheme: dark; scroll-behavior: smooth; }
+    body {
+      font-family: var(--font-ui);
+      background: radial-gradient(1200px 500px at 50% -10%, #17171b 0%, var(--screen) 60%);
+      color: var(--paper);
+      line-height: 1.65;
+      padding: 3rem 1.25rem 5rem;
+      display: flex; justify-content: center;
+    }
+    .doc { width: 100%; max-width: 760px; }
+
+    .backlink {
+      font-family: var(--font-mono); font-size: .7rem; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--dim); text-decoration: none;
+      display: inline-block; margin-bottom: 2rem;
+    }
+    .backlink:hover { color: var(--sub); }
+
+    .eyebrow { font-family: var(--font-mono); font-size: .7rem; letter-spacing: .32em; color: var(--dim); text-transform: uppercase; margin-bottom: .9rem; }
+    h1 { font-family: var(--font-display); font-weight: 800; font-size: clamp(1.9rem, 5vw, 2.6rem); line-height: 1.05; margin-bottom: .6rem; }
+    .updated { font-family: var(--font-mono); font-size: .68rem; color: #5c5b64; letter-spacing: .06em; margin-bottom: 2.25rem; }
+
+    nav.toc {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+      padding: 1rem 1.2rem; margin-bottom: 2.5rem;
+      columns: 2; column-gap: 1.5rem;
+    }
+    nav.toc a { display: block; font-size: .82rem; color: #c9c7bf; text-decoration: none; padding: .18rem 0; break-inside: avoid; }
+    nav.toc a:hover { color: var(--sub); }
+    nav.toc .n { font-family: var(--font-mono); font-size: .68rem; color: var(--sub-dim); margin-right: .5rem; }
+
+    h2 {
+      font-family: var(--font-mono); font-size: .74rem; letter-spacing: .16em;
+      text-transform: uppercase; color: var(--sub);
+      border-top: 1px solid var(--line); padding-top: 1.5rem; margin: 2.5rem 0 .9rem;
+      display: flex; gap: .7rem;
+    }
+    h2 .n { color: #5c5b64; }
+    h3 { font-family: var(--font-ui); font-size: 1rem; font-weight: 600; color: var(--paper); margin: 1.4rem 0 .5rem; }
+    p { font-size: .92rem; color: #c9c7bf; margin-bottom: .9rem; }
+    p strong, li strong { color: var(--paper); font-weight: 600; }
+    a { color: var(--sub); }
+
+    ul { margin: .5rem 0 1rem; padding-left: 0; list-style: none; }
+    li { font-size: .9rem; color: #c9c7bf; padding: .3rem 0 .3rem 1.4rem; position: relative; }
+    li::before { content: "▸"; position: absolute; left: .2rem; color: var(--sub-dim); }
+    li strong { display: inline; }
+
+    .card-block {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+      padding: 1rem 1.2rem; margin: 1rem 0 1.2rem;
+    }
+    .card-block .k { font-family: var(--font-mono); font-size: .62rem; letter-spacing: .16em; text-transform: uppercase; color: var(--dim); margin-bottom: .2rem; }
+    .card-block p:last-child { margin-bottom: 0; }
+
+    table { width: 100%; border-collapse: collapse; font-size: .82rem; margin: 1rem 0 1.3rem; }
+    th { font-family: var(--font-mono); font-size: .6rem; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--line); vertical-align: bottom; }
+    td { padding: .55rem .6rem; border-bottom: 1px solid #1d1d21; color: #c9c7bf; vertical-align: top; }
+    td:first-child { color: var(--paper); font-weight: 500; }
+    tr:last-child td { border-bottom: none; }
+    .mono { font-family: var(--font-mono); font-size: .78rem; }
+
+    .note-legal {
+      background: #191512; border: 1px solid #3d2f16; border-radius: 8px;
+      padding: 1rem 1.2rem; margin: 1.5rem 0;
+      font-size: .85rem; color: #cbb58a; line-height: 1.6;
+    }
+
+    .foot { margin-top: 3.5rem; border-top: 1px solid var(--line); padding-top: 1.2rem; font-family: var(--font-mono); font-size: .66rem; color: #46454d; letter-spacing: .06em; text-align: center; }
+    .foot a { color: var(--sub-dim); }
+    .foot a:hover { color: var(--sub); }
+
+    @media (max-width: 560px) { nav.toc { columns: 1; } }
+  </style>
+</head>
+<body>
+<div class="doc">
+  <a href="/" class="backlink">← Zurück zum Dienst</a>
+
+  <div class="eyebrow">Datenschutz</div>
+  <h1>Datenschutzerklärung</h1>
+  <div class="updated">Stand: <span id="today">2026</span> · Gemäß DSGVO / BDSG</div>
+
+  <nav class="toc">
+    <a href="#s1"><span class="n">1</span>Verantwortlicher</a>
+    <a href="#s2"><span class="n">2</span>Überblick</a>
+    <a href="#s3"><span class="n">3</span>Hochgeladene Videos</a>
+    <a href="#s4"><span class="n">4</span>Server-Logs &amp; IP-Adresse</a>
+    <a href="#s5"><span class="n">5</span>Cookies &amp; lokale Speicherung</a>
+    <a href="#s6"><span class="n">6</span>Lizenzschlüssel</a>
+    <a href="#s7"><span class="n">7</span>Google Fonts</a>
+    <a href="#s8"><span class="n">8</span>Speicherdauer</a>
+    <a href="#s9"><span class="n">9</span>Empfänger / Auftragsverarbeiter</a>
+    <a href="#s10"><span class="n">10</span>Ihre Rechte</a>
+    <a href="#s11"><span class="n">11</span>Beschwerderecht</a>
+    <a href="#s12"><span class="n">12</span>Änderungen</a>
+  </nav>
+
+  <h2 id="s1"><span class="n">01</span> Verantwortlicher</h2>
+  <p>Verantwortlicher im Sinne der Datenschutz-Grundverordnung (DSGVO) ist:</p>
+  <div class="card-block">
+    <p id="dsName"><strong>[Vor- und Nachname / Firmenname]</strong></p>
+    <p id="dsAddr">[Straße und Hausnummer], [PLZ und Ort], Deutschland</p>
+    <p>E-Mail: <a id="dsEmail" href="#">[E-Mail-Adresse]</a></p>
+  </div>
+  <p>Die vollständigen Kontaktdaten finden Sie in unserem <a href="/impressum.html">Impressum</a>.</p>
+
+  <h2 id="s2"><span class="n">02</span> Überblick &amp; Grundsatz der Datensparsamkeit</h2>
+  <p>
+    Dieser Dienst erstellt Untertitel für kurze Videos. Wir haben ihn bewusst
+    <strong>datensparsam</strong> gestaltet: Es besteht <strong>keine Registrierung</strong>, wir legen
+    <strong>keine Nutzerkonten</strong> an, und wir setzen <strong>keine Tracking- oder Analyse-Dienste</strong>
+    sowie <strong>keine Werbung</strong> ein. Die wenigen verarbeiteten Daten sind nachfolgend einzeln
+    aufgeführt.
+  </p>
+
+  <h2 id="s3"><span class="n">03</span> Verarbeitung hochgeladener Videos</h2>
+  <p>
+    Wenn Sie ein Video hochladen, wird die Datei auf unserem Server gespeichert und verarbeitet, um
+    daraus per automatischer Spracherkennung (Software „Whisper") Untertitel zu erzeugen und diese auf
+    Wunsch in das Video einzubrennen (Software „ffmpeg"). Die gesamte Verarbeitung findet
+    <strong>auf unserem eigenen Server</strong> statt; es werden hierfür <strong>keine externen
+    KI-Dienste oder Cloud-APIs</strong> aufgerufen.
+  </p>
+  <p>
+    Videos können personenbezogene Daten enthalten (z. B. abgebildete oder sprechende Personen). Sie
+    sind allein dafür verantwortlich, dass Sie über die erforderlichen Rechte an den hochgeladenen
+    Inhalten verfügen und dass durch den Upload keine Rechte Dritter verletzt werden.
+  </p>
+  <table>
+    <tr><th>Merkmal</th><th>Angabe</th></tr>
+    <tr><td>Zweck</td><td>Erstellung und Einbrennen von Untertiteln</td></tr>
+    <tr><td>Rechtsgrundlage</td><td>Art. 6 Abs. 1 lit. b DSGVO (Erfüllung der von Ihnen angeforderten Leistung)</td></tr>
+    <tr><td>Speicherdauer</td><td>Automatische Löschung nach <span id="ret1" class="mono">24</span> Stunden</td></tr>
+    <tr><td>Weitergabe</td><td>Keine Weitergabe an Dritte</td></tr>
+  </table>
+
+  <h2 id="s4"><span class="n">04</span> Server-Logfiles &amp; IP-Adresse</h2>
+  <p>
+    Beim Aufruf des Dienstes verarbeitet der Server technisch notwendige Verbindungsdaten. Ihre
+    <strong>IP-Adresse</strong> wird darüber hinaus verwendet, um die Anzahl kostenloser Übersetzungen
+    pro Tag zu begrenzen (<span id="daily1" class="mono">3</span> pro Tag) und um Missbrauch abzuwehren.
+    Zu diesem Zweck wird pro IP-Adresse ein Tageszähler im Arbeitsspeicher geführt.
+  </p>
+  <table>
+    <tr><th>Merkmal</th><th>Angabe</th></tr>
+    <tr><td>Datenarten</td><td>IP-Adresse, Datum/Uhrzeit, technische Verbindungsdaten, Ereignis-Logs (z. B. Upload angenommen, Limit erreicht)</td></tr>
+    <tr><td>Zweck</td><td>Bereitstellung und Stabilität des Dienstes, Begrenzung kostenloser Nutzung, Missbrauchsabwehr, IT-Sicherheit</td></tr>
+    <tr><td>Rechtsgrundlage</td><td>Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an einem sicheren, missbrauchsfreien Betrieb)</td></tr>
+    <tr><td>Speicherdauer</td><td>Der IP-Tageszähler wird spätestens täglich zurückgesetzt. Etwaige Server-Logdateien werden kurzfristig gespeichert und regelmäßig gelöscht.</td></tr>
+  </table>
+
+  <h2 id="s5"><span class="n">05</span> Cookies &amp; lokale Speicherung</h2>
+  <p>
+    Wir verwenden <strong>ausschließlich technisch notwendige bzw. funktionale</strong> Cookies und
+    Browser-Speicher. Es werden <strong>keine Marketing- oder Tracking-Cookies</strong> gesetzt. Aus
+    diesem Grund ist eine Einwilligung für die nachfolgenden Einträge nicht erforderlich; wir informieren
+    Sie dennoch transparent über einen kurzen Hinweis-Banner.
+  </p>
+  <table>
+    <tr><th>Name</th><th>Typ</th><th>Zweck</th><th>Dauer</th></tr>
+    <tr><td class="mono">license</td><td>Cookie (httpOnly)</td><td>Erkennt einen gültigen Lizenzschlüssel, um das Tageslimit aufzuheben</td><td class="mono"><span id="lic1">7</span> Tage</td></tr>
+    <tr><td class="mono">pref_language</td><td>Cookie</td><td>Merkt sich die zuletzt gewählte Video-Sprache</td><td class="mono">180 Tage</td></tr>
+    <tr><td class="mono">pref_model</td><td>Cookie</td><td>Merkt sich das zuletzt gewählte Modell</td><td class="mono">180 Tage</td></tr>
+    <tr><td class="mono">lang</td><td>localStorage</td><td>Merkt sich die Sprache der Benutzeroberfläche (DE/EN/UK)</td><td class="mono">bis zur Löschung</td></tr>
+    <tr><td class="mono">cookie_notice</td><td>localStorage</td><td>Merkt sich, dass Sie den Hinweis-Banner geschlossen haben</td><td class="mono">bis zur Löschung</td></tr>
+  </table>
+  <p>
+    <strong>Rechtsgrundlage:</strong> § 25 Abs. 2 Nr. 2 TDDG (technisch erforderliche bzw. vom Nutzer
+    ausdrücklich gewünschte Speicherung) sowie Art. 6 Abs. 1 lit. f DSGVO. Sie können Cookies jederzeit
+    in Ihren Browsereinstellungen löschen und die lokale Speicherung deaktivieren.
+  </p>
+
+  <h2 id="s6"><span class="n">06</span> Lizenzschlüssel</h2>
+  <p>
+    Geben Sie einen Lizenzschlüssel ein, wird dieser in einem <span class="mono">httpOnly</span>-Cookie
+    gespeichert, damit Ihr Browser bei weiteren Anfragen als lizenziert erkannt wird. Der Schlüssel wird
+    ausschließlich zur Freischaltung der unbegrenzten Nutzung verwendet. Eine darüber hinausgehende
+    Identifizierung Ihrer Person erfolgt hierdurch nicht. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO.
+  </p>
+
+  <h2 id="s7"><span class="n">07</span> Google Fonts</h2>
+  <p>
+    Diese Website nutzt zur einheitlichen Darstellung von Schriftarten sogenannte Web Fonts, die von
+    Google bereitgestellt werden. Beim Aufruf einer Seite lädt Ihr Browser die benötigten Schriftarten,
+    um Texte korrekt anzuzeigen. Dabei wird eine Verbindung zu Servern von Google (Google Ireland
+    Limited, Gordon House, Barrow Street, Dublin 4, Irland) aufgebaut, wodurch Google Kenntnis von Ihrer
+    IP-Adresse erlangt. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an einer
+    einheitlichen Darstellung).
+  </p>
+  <div class="note-legal">
+    <strong>Hinweis zur datenschutzfreundlichen Alternative:</strong> Google Fonts können auch lokal auf
+    dem eigenen Server eingebunden werden (Self-Hosting), sodass keine Verbindung zu Google aufgebaut
+    wird. Sofern Sie diese Website betreiben, empfehlen wir aus Datenschutzgründen das Self-Hosting der
+    Schriftarten; in diesem Fall kann dieser Abschnitt entfernt werden.
+  </div>
+
+  <h2 id="s8"><span class="n">08</span> Speicherdauer</h2>
+  <ul>
+    <li><strong>Hochgeladene Videos, erzeugte Untertitel und Ergebnisdateien:</strong> automatische Löschung spätestens <span id="ret2" class="mono">24</span> Stunden nach dem Upload.</li>
+    <li><strong>Laufende Verarbeitung:</strong> Schließen Sie den Browser-Tab, wird eine laufende Verarbeitung abgebrochen und die zugehörige Datei entfernt.</li>
+    <li><strong>IP-Tageszähler:</strong> Rücksetzung spätestens täglich.</li>
+    <li><strong>Cookies / localStorage:</strong> gemäß Tabelle in Abschnitt 5.</li>
+  </ul>
+
+  <h2 id="s9"><span class="n">09</span> Empfänger &amp; Auftragsverarbeiter</h2>
+  <p>
+    Die Verarbeitung erfolgt auf unserem eigenen Server. Eine Übermittlung Ihrer Daten an Dritte findet
+    nicht statt, mit Ausnahme des in Abschnitt 7 beschriebenen Abrufs von Google Fonts. Sofern der Server
+    bei einem Hosting-Dienstleister betrieben wird, erfolgt dies auf Grundlage eines Vertrags zur
+    Auftragsverarbeitung gemäß Art. 28 DSGVO.
+  </p>
+  <div class="note-legal">
+    <strong>Auszufüllen durch den Betreiber:</strong> Nennen Sie hier Ihren Hosting-Anbieter
+    (Name, Anschrift, Land) und bestätigen Sie das Bestehen eines Auftragsverarbeitungsvertrags (AVV).
+    Bei Serverstandort außerhalb der EU sind zusätzliche Angaben zum Drittlandtransfer erforderlich.
+  </div>
+
+  <h2 id="s10"><span class="n">10</span> Ihre Rechte als betroffene Person</h2>
+  <p>Ihnen stehen nach der DSGVO folgende Rechte zu:</p>
+  <ul>
+    <li><strong>Auskunft</strong> (Art. 15 DSGVO)</li>
+    <li><strong>Berichtigung</strong> (Art. 16 DSGVO)</li>
+    <li><strong>Löschung</strong> (Art. 17 DSGVO)</li>
+    <li><strong>Einschränkung der Verarbeitung</strong> (Art. 18 DSGVO)</li>
+    <li><strong>Datenübertragbarkeit</strong> (Art. 20 DSGVO)</li>
+    <li><strong>Widerspruch</strong> gegen Verarbeitungen auf Grundlage berechtigter Interessen (Art. 21 DSGVO)</li>
+  </ul>
+  <p>
+    Zur Ausübung Ihrer Rechte genügt eine formlose Mitteilung an die im Impressum genannte
+    E-Mail-Adresse. Bitte beachten Sie, dass wir aufgrund der kurzen Speicherdauer (24 Stunden) und der
+    Datensparsamkeit in der Regel keine Ihnen zuordenbaren Daten mehr vorhalten.
+  </p>
+
+  <h2 id="s11"><span class="n">11</span> Beschwerderecht bei der Aufsichtsbehörde</h2>
+  <p>
+    Sie haben das Recht, sich bei einer Datenschutz-Aufsichtsbehörde über die Verarbeitung Ihrer
+    personenbezogenen Daten zu beschweren (Art. 77 DSGVO). Zuständig ist grundsätzlich die
+    Aufsichtsbehörde des Bundeslandes, in dem der Verantwortliche seinen Sitz hat. Eine Liste der
+    deutschen Aufsichtsbehörden finden Sie unter
+    <a href="https://www.bfdi.bund.de/" target="_blank" rel="noopener noreferrer">www.bfdi.bund.de</a>.
+  </p>
+
+  <h2 id="s12"><span class="n">12</span> Änderungen dieser Datenschutzerklärung</h2>
+  <p>
+    Wir behalten uns vor, diese Datenschutzerklärung anzupassen, damit sie stets den aktuellen
+    rechtlichen Anforderungen entspricht oder um Änderungen unseres Dienstes umzusetzen. Für Ihren
+    erneuten Besuch gilt dann die jeweils aktuelle Fassung.
+  </p>
+
+  <div class="foot">
+    SUBTITLED · <a href="/impressum.html">Impressum</a> · <a href="/datenschutz.html">Datenschutz</a> · <a href="/">Zurück zum Dienst</a>
+  </div>
+</div>
+
+<script>
+  document.getElementById('today').textContent = new Date().getFullYear();
+  fetch('/legal').then(function (r) { return r.json(); }).then(function (d) {
+    var L = d.legal || {};
+    function set(id, val) { var el = document.getElementById(id); if (el && val != null) el.textContent = val; }
+    if (L.name) document.getElementById('dsName').innerHTML = '<strong>' + L.name + '</strong>';
+    var addr = [L.street, L.zipCity, L.country].filter(Boolean).join(', ');
+    if (addr) set('dsAddr', addr);
+    var email = document.getElementById('dsEmail');
+    if (email && L.email) { email.textContent = L.email; email.href = 'mailto:' + L.email; }
+    if (d.retentionHours) { set('ret1', d.retentionHours); set('ret2', d.retentionHours); }
+    if (d.dailyLimit) set('daily1', d.dailyLimit);
+    if (d.licenseTtlDays) set('lic1', d.licenseTtlDays);
+  }).catch(function () {});
+</script>
+</body>
+</html>

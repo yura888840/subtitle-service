@@ -1,0 +1,44 @@
+services:
+  subtitle-service:
+    build: .
+    image: subtitle-service:latest
+    container_name: subtitle-service
+    restart: unless-stopped
+
+    # Bind to localhost only. External traffic goes through the reverse proxy.
+    ports:
+      - "127.0.0.1:3000:3000"
+
+    env_file:
+      - .env
+
+    volumes:
+      # Files survive container restarts (TTL cleanup still applies —
+      # it sweeps the disk by mtime)
+      - subtitle-uploads:/app/uploads
+      # Whisper model cache: large-v3 is ~3 GB, download it ONCE
+      - whisper-models:/app/.cache
+      # Swap the processing script without rebuilding the image:
+      # - ./scripts/transcribe.sh:/app/scripts/transcribe.sh:ro
+      # - ./scripts/burn.sh:/app/scripts/burn.sh:ro
+
+    # Whisper large-v3 on CPU needs real resources.
+    # ~10 GB RAM recommended for large-v3; 6 GB minimum for medium.
+    cpus: "4.0"
+    mem_limit: 12g
+
+    # Proper SIGTERM delivery to node
+    init: true
+    stop_grace_period: 15s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  subtitle-uploads:
+    driver: local
+  whisper-models:
+    driver: local

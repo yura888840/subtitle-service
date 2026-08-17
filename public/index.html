@@ -1,0 +1,1629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SUBTITLED — video subtitle studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Schibsted+Grotesk:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --screen:  #0B0B0D;
+      --panel:   #141416;
+      --panel-2: #18181B;
+      --line:    #26262B;
+      --sub:     #F2C230;   /* burned-subtitle yellow */
+      --sub-dim: #8a6f1d;
+      --paper:   #F4F2EC;
+      --dim:     #8B8A93;
+      --ok:      #7BC488;
+      --err:     #E06C6C;
+      --info:    #7FA8D9;
+      --font-display: "Bricolage Grotesque", sans-serif;
+      --font-ui: "Schibsted Grotesk", sans-serif;
+      --font-mono: "Spline Sans Mono", monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { color-scheme: dark; }
+
+    body {
+      font-family: var(--font-ui);
+      background:
+        radial-gradient(1200px 500px at 50% -10%, #17171b 0%, var(--screen) 60%);
+      color: var(--paper);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 3rem 1.25rem 4rem;
+      line-height: 1.5;
+    }
+
+    :focus-visible { outline: 2px solid var(--sub); outline-offset: 2px; border-radius: 2px; }
+
+    .card { width: 100%; max-width: 660px; transition: max-width .3s ease; }
+
+    .topbar { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+    .lang-toggle { font-family: var(--font-mono); font-size: .7rem; letter-spacing: .1em; color: #46454d; white-space: nowrap; }
+    .lang-btn {
+      background: none; border: none; cursor: pointer;
+      font: inherit; color: var(--dim); padding: .15rem .1rem; letter-spacing: .1em;
+    }
+    .lang-btn:hover { color: var(--paper); }
+    .lang-btn.on { color: var(--sub); }
+    .lang-sep { margin: 0 .15rem; }
+
+    .ua-footer {
+      margin-top: .9rem;
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: .68rem;
+      letter-spacing: .06em;
+      color: #5c5b64;
+    }
+    .ua-heart { vertical-align: -2px; margin-left: .3rem; }
+
+    .legal-links {
+      margin-top: 1.4rem;
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: .68rem;
+      letter-spacing: .1em;
+    }
+    .legal-links a { color: var(--dim); text-decoration: none; }
+    .legal-links a:hover { color: var(--sub); }
+    .legal-links .ll-sep { color: var(--line); margin: 0 .5rem; }
+
+    /* Cookie banner */
+    .cookie-banner {
+      position: fixed;
+      left: 1rem; right: 1rem; bottom: 1rem;
+      z-index: 50;
+      display: flex; justify-content: center;
+      animation: cookieUp .35s ease;
+    }
+    .cookie-banner[hidden] { display: none; }
+    @keyframes cookieUp { from { transform: translateY(120%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .cookie-inner {
+      display: flex; align-items: center; gap: 1rem;
+      max-width: 660px; width: 100%;
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-left: 3px solid var(--sub);
+      border-radius: 10px;
+      padding: .85rem 1rem .85rem 1.1rem;
+      box-shadow: 0 10px 40px rgba(0,0,0,.5);
+    }
+    .cookie-text { font-size: .8rem; color: #c9c7bf; line-height: 1.5; margin: 0; flex: 1; }
+    .cookie-text a { color: var(--sub); }
+    .cookie-btn {
+      flex-shrink: 0;
+      padding: .5rem 1.3rem;
+      background: var(--sub);
+      color: #121004;
+      border: none; border-radius: 6px;
+      font-family: var(--font-mono); font-size: .72rem; font-weight: 500;
+      letter-spacing: .12em; text-transform: uppercase;
+      cursor: pointer;
+    }
+    .cookie-btn:hover { filter: brightness(1.08); }
+    @media (max-width: 560px) {
+      .cookie-inner { flex-direction: column; align-items: stretch; gap: .7rem; text-align: center; }
+    }
+    .card.wide { max-width: 940px; }
+
+    /* =============== HERO =============== */
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: .7rem;
+      letter-spacing: .32em;
+      color: var(--dim);
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+    h1 {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: clamp(2.1rem, 6vw, 3.1rem);
+      line-height: 1.02;
+      letter-spacing: -.01em;
+      margin-bottom: 1.5rem;
+    }
+    h1 em { font-style: normal; color: var(--sub); }
+
+    /* The screen: a letterboxed frame with a live subtitle */
+    .screen {
+      position: relative;
+      background: #000;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      aspect-ratio: 21 / 8;
+      overflow: hidden;
+      margin-bottom: .85rem;
+    }
+    .screen::before { /* faint grain */
+      content: "";
+      position: absolute; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+      pointer-events: none;
+    }
+    .screen::after { /* soft vignette */
+      content: "";
+      position: absolute; inset: 0;
+      background: radial-gradient(90% 120% at 50% 40%, transparent 55%, rgba(0,0,0,.55) 100%);
+      pointer-events: none;
+    }
+    .tc {
+      position: absolute;
+      top: .6rem; right: .75rem;
+      font-family: var(--font-mono);
+      font-size: .68rem;
+      letter-spacing: .08em;
+      color: var(--dim);
+      z-index: 1;
+    }
+    .subline {
+      position: absolute;
+      left: 8%; right: 8%; bottom: 10%;
+      text-align: center;
+      font-family: var(--font-ui);
+      font-weight: 500;
+      font-size: clamp(.95rem, 2.6vw, 1.25rem);
+      color: var(--sub);
+      text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 18px rgba(0,0,0,.6);
+      z-index: 1;
+      transition: opacity .45s ease;
+    }
+    .subline.fading { opacity: 0; }
+
+    .steps {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      font-family: var(--font-mono);
+      font-size: .7rem;
+      letter-spacing: .22em;
+      color: var(--dim);
+      margin-bottom: .75rem;
+    }
+    .steps b { font-weight: 500; color: var(--paper); }
+    .card.wide .steps .st-upload { color: var(--dim); }
+    .card.wide .steps .st-edit { color: var(--sub); }
+    .steps .arrow { color: var(--line); letter-spacing: 0; }
+
+    .lede { font-size: .92rem; color: var(--dim); margin-bottom: 2.25rem; max-width: 46ch; }
+
+    /* =============== SECTIONS =============== */
+    section, .section { margin-bottom: 1.75rem; }
+    .rule { border: 0; border-top: 1px solid var(--line); margin: 2rem 0; }
+
+    /* Drop zone with film perforations */
+    .drop-zone {
+      position: relative;
+      border: 1px dashed #3a3a41;
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 2.4rem 3.2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+    }
+    .drop-zone::before, .drop-zone::after { /* film sprocket holes */
+      content: "";
+      position: absolute; top: 10px; bottom: 10px; width: 8px;
+      background-image: radial-gradient(circle at 50% 50%, #2c2c31 2.6px, transparent 3px);
+      background-size: 8px 16px;
+      background-repeat: repeat-y;
+      opacity: .9;
+    }
+    .drop-zone::before { left: 9px; }
+    .drop-zone::after  { right: 9px; }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--sub);
+      background: #16151070;
+    }
+    .drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .drop-icon { display: none; }
+    .drop-label { font-size: .95rem; font-weight: 500; color: var(--paper); }
+    .drop-label strong { color: var(--sub); font-weight: 600; }
+    .drop-hint {
+      font-family: var(--font-mono);
+      font-size: .72rem;
+      color: var(--dim);
+      margin-top: .5rem;
+      letter-spacing: .04em;
+    }
+
+    .file-info {
+      display: none;
+      align-items: center;
+      gap: .7rem;
+      margin-top: .8rem;
+      padding: .65rem .9rem;
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-left: 3px solid var(--sub);
+      border-radius: 6px;
+      font-size: .85rem;
+    }
+    .file-info.visible { display: flex; }
+    .file-name { font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-size { font-family: var(--font-mono); font-size: .75rem; color: var(--dim); white-space: nowrap; }
+
+    .options-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-top: 1.1rem;
+    }
+    .field label {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: .68rem;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--dim);
+      margin-bottom: .45rem;
+    }
+    .field select {
+      width: 100%;
+      padding: .65rem .8rem;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      font-family: var(--font-ui);
+      font-size: .9rem;
+      color: var(--paper);
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238B8A93' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right .8rem center;
+      transition: border-color .15s;
+    }
+    .field select:hover { border-color: #3a3a41; }
+    .field select:focus { outline: none; border-color: var(--sub); }
+    .field-hint { font-size: .72rem; color: #5c5b64; margin-top: .35rem; }
+
+    .quota-label {
+      margin-top: 1.2rem;
+      font-family: var(--font-mono);
+      font-size: .7rem;
+      letter-spacing: .08em;
+      color: var(--dim);
+    }
+    .quota-label .q-num { color: var(--paper); }
+    .quota-label.low { color: var(--sub); }
+    .quota-label.low .q-num { color: var(--sub); }
+    .quota-label.licensed { color: var(--sub-dim); }
+    .quota-label.licensed .q-num { color: var(--sub); }
+
+    .btn {
+      display: block;
+      width: 100%;
+      margin-top: .6rem;
+      padding: .85rem;
+      background: var(--sub);
+      color: #121004;
+      border: none;
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-size: .8rem;
+      font-weight: 500;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: filter .15s, transform .1s;
+    }
+    .btn:hover:not(:disabled) { filter: brightness(1.08); }
+    .btn:active:not(:disabled) { transform: translateY(1px); }
+    .btn:disabled { opacity: .35; cursor: not-allowed; }
+    .btn.green { background: var(--ok); color: #0a1a0e; }
+
+    /* =============== CONDITIONS AS AN SRT FILE =============== */
+    .srt-file {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-top: 2rem;
+    }
+    .srt-tab {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .55rem .9rem;
+      border-bottom: 1px solid var(--line);
+      font-family: var(--font-mono);
+      font-size: .72rem;
+      letter-spacing: .06em;
+      color: var(--dim);
+      background: var(--panel-2);
+    }
+    .srt-tab .dotrec { color: var(--err); }
+    .srt-body {
+      padding: 1.1rem 1.25rem 1.25rem;
+      font-family: var(--font-mono);
+      font-size: .78rem;
+      line-height: 1.55;
+    }
+    .srt-cue { margin-bottom: 1rem; }
+    .srt-cue:last-child { margin-bottom: 0; }
+    .srt-idx { color: #5c5b64; }
+    .srt-time { color: var(--sub-dim); }
+    .srt-text { color: var(--paper); }
+    .srt-text a { color: var(--sub); text-decoration: underline; text-underline-offset: 2px; }
+
+    /* =============== LICENSE (ticket stub) =============== */
+    .license-box {
+      margin-top: 1.5rem;
+      padding: 1rem 1.1rem;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font-size: .82rem;
+      color: var(--dim);
+      position: relative;
+      transition: border-color .3s;
+    }
+    .license-box::before { /* ticket perforation */
+      content: "";
+      position: absolute;
+      left: 0; right: 0; top: 2.35rem;
+      border-top: 1px dashed var(--line);
+    }
+    .license-box.highlight { border-color: var(--sub); box-shadow: 0 0 0 1px var(--sub), 0 0 24px rgba(242,194,48,.12); }
+    .license-box.active-license { border-color: var(--sub-dim); }
+    .license-box.active-license .license-title { color: var(--sub); }
+    .license-title {
+      font-family: var(--font-mono);
+      font-size: .68rem;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--paper);
+      margin-bottom: 1rem;
+    }
+    #licenseInfo { line-height: 1.55; }
+    .license-row { display: flex; gap: .5rem; margin-top: .65rem; }
+    .license-row input {
+      flex: 1;
+      padding: .55rem .7rem;
+      background: var(--screen);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-size: .8rem;
+      letter-spacing: .05em;
+      color: var(--paper);
+    }
+    .license-row input::placeholder { color: #46454d; }
+    .license-row input:focus { outline: none; border-color: var(--sub); }
+    .license-row button {
+      padding: .55rem 1rem;
+      background: transparent;
+      color: var(--sub);
+      border: 1px solid var(--sub-dim);
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-size: .72rem;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background .15s, color .15s;
+    }
+    .license-row button:hover:not(:disabled) { background: var(--sub); color: #121004; }
+    .license-row button:disabled { opacity: .4; cursor: not-allowed; }
+    .license-msg { margin-top: .45rem; font-size: .76rem; }
+    .license-msg.err { color: var(--err); }
+    .license-msg.ok { color: var(--ok); }
+    .quota-note { margin-top: .4rem; font-family: var(--font-mono); font-size: .7rem; color: #5c5b64; }
+    .license-box a { color: var(--sub); }
+
+    /* =============== STATUS PANEL =============== */
+    .status-panel {
+      display: none;
+      margin-top: 1.5rem;
+      padding: 1.1rem 1.2rem;
+      border-radius: 8px;
+      font-size: .86rem;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-left-width: 3px;
+    }
+    .status-panel.visible { display: block; }
+    .status-panel.uploading  { border-left-color: var(--sub); }
+    .status-panel.queued     { border-left-color: var(--sub); }
+    .status-panel.processing { border-left-color: var(--info); }
+    .status-panel.done       { border-left-color: var(--ok); }
+    .status-panel.error      { border-left-color: var(--err); }
+
+    .status-header {
+      display: flex; align-items: center; gap: .55rem;
+      font-weight: 600; margin-bottom: .35rem;
+    }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .uploading  .status-dot, .queued .status-dot { background: var(--sub); }
+    .processing .status-dot { background: var(--info); animation: pulse 1.2s ease-in-out infinite; }
+    .done       .status-dot { background: var(--ok); }
+    .error      .status-dot { background: var(--err); }
+    .uploading  .status-dot { animation: pulse 1.2s ease-in-out infinite; }
+
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .25; } }
+
+    .status-message { color: var(--dim); }
+
+    .upload-progress {
+      display: none;
+      height: 4px;
+      background: var(--line);
+      border-radius: 2px;
+      margin-top: .8rem;
+      overflow: hidden;
+    }
+    .upload-progress.visible { display: block; }
+    .upload-progress-bar { height: 100%; width: 0%; background: var(--sub); border-radius: 2px; transition: width .2s; }
+
+    .indeterminate {
+      display: none;
+      height: 3px;
+      background: var(--line);
+      border-radius: 2px;
+      margin-top: .8rem;
+      overflow: hidden;
+    }
+    .indeterminate.visible { display: block; }
+    .indeterminate-bar {
+      height: 100%; width: 38%;
+      background: var(--info);
+      border-radius: 2px;
+      animation: slide 1.5s ease-in-out infinite;
+    }
+    @keyframes slide { 0% { transform: translateX(-110%); } 100% { transform: translateX(360%); } }
+
+    .download-link {
+      display: none;
+      margin-top: .85rem;
+      margin-right: .5rem;
+      padding: .55rem 1rem;
+      background: var(--ok);
+      color: #0a1a0e;
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-size: .72rem;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      font-weight: 500;
+      text-decoration: none;
+    }
+    .download-link.visible { display: inline-block; }
+    .download-link.secondary { background: transparent; color: var(--paper); border: 1px solid var(--line); }
+
+    .reset-btn {
+      display: none;
+      margin-top: .8rem;
+      background: none;
+      border: none;
+      color: var(--sub);
+      cursor: pointer;
+      font-size: .8rem;
+      padding: 0;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    .reset-btn.visible { display: inline-block; }
+
+    /* =============== SUPPORT =============== */
+    .support-block {
+      display: none;
+      margin-top: 1rem;
+      padding: .9rem 1rem;
+      background: #191512;
+      border: 1px solid #3d2f16;
+      border-radius: 8px;
+      font-size: .82rem;
+      color: #cbb58a;
+      line-height: 1.55;
+    }
+    .support-block.visible { display: block; }
+    .support-block a {
+      display: inline-block;
+      margin-top: .5rem;
+      padding: .5rem 1rem;
+      background: var(--sub);
+      color: #121004;
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-size: .72rem;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      font-weight: 500;
+      text-decoration: none;
+    }
+    .support-block a:hover { filter: brightness(1.08); }
+
+    .warn-note {
+      margin-top: 2.25rem;
+      font-family: var(--font-mono);
+      font-size: .68rem;
+      letter-spacing: .04em;
+      color: #46454d;
+      text-align: center;
+      line-height: 1.7;
+    }
+
+    /* =============== EDITOR =============== */
+    #editorView { display: none; }
+    #editorView.visible { display: block; }
+    #uploadView.hidden { display: none; }
+    .card.wide .screen, .card.wide h1, .card.wide .eyebrow { display: none; }
+
+    .player-wrap {
+      background: #000;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: .6rem;
+    }
+    .player-wrap video { display: block; width: 100%; max-height: 440px; background: #000; }
+    .player-note {
+      display: none;
+      font-family: var(--font-mono);
+      font-size: .72rem;
+      color: var(--sub);
+      background: #1c1809;
+      border: 1px solid var(--sub-dim);
+      border-radius: 6px;
+      padding: .55rem .8rem;
+      margin-bottom: .8rem;
+    }
+    .player-note.visible { display: block; }
+
+    .editor-toolbar {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 1rem;
+      margin: 1.1rem 0 .55rem;
+    }
+    .editor-title {
+      font-family: var(--font-mono);
+      font-size: .7rem;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--paper);
+    }
+    .cue-count { font-family: var(--font-mono); font-size: .68rem; color: #5c5b64; }
+
+    .cue-list {
+      max-height: 46vh;
+      overflow-y: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+    .cue {
+      display: grid;
+      grid-template-columns: 168px 1fr;
+      gap: .8rem;
+      padding: .65rem .9rem;
+      border-bottom: 1px solid #1d1d21;
+      border-left: 3px solid transparent;
+      align-items: start;
+      transition: background .2s, border-color .2s;
+    }
+    .cue:last-child { border-bottom: none; }
+    .cue.active { background: #1a180f; border-left-color: var(--sub); }
+    .cue-time {
+      font-family: var(--font-mono);
+      font-size: .68rem;
+      color: var(--sub-dim);
+      cursor: pointer;
+      padding-top: .5rem;
+      user-select: none;
+      white-space: nowrap;
+      letter-spacing: .02em;
+      transition: color .15s;
+    }
+    .cue-time:hover { color: var(--sub); }
+    .cue.active .cue-time { color: var(--sub); }
+    .cue textarea {
+      width: 100%;
+      min-height: 2.5rem;
+      resize: vertical;
+      background: var(--screen);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: .5rem .65rem;
+      font-family: var(--font-ui);
+      font-size: .875rem;
+      line-height: 1.5;
+      color: var(--paper);
+    }
+    .cue textarea:focus { outline: none; border-color: var(--sub); }
+
+    @media (max-width: 560px) {
+      body { padding: 2rem 1rem 3rem; }
+      .options-row { grid-template-columns: 1fr; }
+      .cue { grid-template-columns: 1fr; gap: .3rem; }
+      .cue-time { padding-top: 0; }
+      .drop-zone { padding: 2rem 2.2rem; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+<div class="card" id="card">
+
+  <div class="topbar">
+    <div class="eyebrow" id="brandEyebrow">Video Subtitle Studio</div>
+    <div class="lang-toggle" role="group" aria-label="Language">
+      <button type="button" id="langEn" class="lang-btn">EN</button><span class="lang-sep">/</span><button type="button" id="langUk" class="lang-btn">УКР</button>
+    </div>
+  </div>
+  <h1 id="brandTitle">Speak any language.<br>Leave <em>subtitled</em> in English.</h1>
+
+  <div class="screen" aria-hidden="true">
+    <div class="tc" id="heroTc">00:00:00,000</div>
+    <p class="subline" id="heroSub">Upload a video. Whisper listens.</p>
+  </div>
+
+  <div class="steps" aria-hidden="true">
+    <b class="st-upload" id="stepUpload">UPLOAD</b><span class="arrow">→</span>
+    <b class="st-edit" id="stepEdit">EDIT</b><span class="arrow">→</span>
+    <b class="st-burn" id="stepBurn">BURN</b>
+  </div>
+
+  <p class="lede" id="pageSubtitle">Whisper transcribes and translates your video to English. You review every line beside the player, then the subtitles are burned into the file.</p>
+
+  <!-- ============ VIEW 1: UPLOAD ============ -->
+  <div id="uploadView">
+    <div class="drop-zone" id="dropZone">
+      <input type="file" id="fileInput" accept="video/*" />
+      <div class="drop-icon"></div>
+      <div class="drop-label" id="dropLabel">Drop your video here or <strong>browse</strong></div>
+      <div class="drop-hint" id="dropHint">.mp4 / .avi — max 7 minutes</div>
+    </div>
+
+    <div class="file-info" id="fileInfo">
+      <span class="file-name" id="fileName"></span>
+      <span class="file-size" id="fileSize"></span>
+    </div>
+
+    <div class="options-row">
+      <div class="field">
+        <label for="languageSelect" id="lblLanguage">Language of video</label>
+        <select id="languageSelect"></select>
+        <div class="field-hint" id="hintLanguage">The language spoken in the video</div>
+      </div>
+      <div class="field">
+        <label for="modelSelect" id="lblModel">Model</label>
+        <select id="modelSelect"></select>
+        <div class="field-hint" id="hintModel">Larger = more accurate, slower</div>
+      </div>
+    </div>
+
+    <div class="quota-label" id="quotaLabel" aria-live="polite"></div>
+
+    <button class="btn" id="uploadBtn" disabled>Upload &amp; generate subtitles</button>
+
+    <!-- ============ SHARED STATUS PANEL ============ -->
+    <div class="status-panel" id="statusPanel">
+      <div class="status-header">
+        <span class="status-dot"></span>
+        <span id="statusTitle">—</span>
+      </div>
+      <div class="status-message" id="statusMessage"></div>
+      <div class="upload-progress" id="uploadProgress"><div class="upload-progress-bar" id="uploadProgressBar"></div></div>
+      <div class="indeterminate" id="procBar"><div class="indeterminate-bar"></div></div>
+      <a class="download-link" id="downloadVideoLink" href="#" download>Download subtitled video</a>
+      <a class="download-link secondary" id="downloadSrtLink" href="#" download>Download .srt</a>
+      <div class="support-block" id="supportBlock">
+        <span id="supportText">If you like this service, and if you want to support us to make it faster, no queues (requires more powerful servers) —</span><br>
+        <a id="supportLink" href="#" target="_blank" rel="noopener noreferrer"></a>
+      </div>
+      <button class="reset-btn" id="resetBtn">Start over with a new video</button>
+    </div>
+
+
+    <!-- Conditions, in the format this studio speaks -->
+    <div class="srt-file" aria-label="Service conditions">
+      <div class="srt-tab">
+        <span>conditions.srt</span>
+        <span><span class="dotrec">●</span> <span id="srtAlways">always in effect</span></span>
+      </div>
+      <div class="srt-body">
+        <div class="srt-cue">
+          <div class="srt-idx">1</div>
+          <div class="srt-time">00:00:00,000 --> 00:<span id="condMinutes">07</span>:00,000</div>
+          <div class="srt-text" id="cond1">Videos up to <span id="condMinutesTxt">7</span> minutes long.</div>
+        </div>
+        <div class="srt-cue">
+          <div class="srt-idx">2</div>
+          <div class="srt-time">00:00:00,000 --> 23:59:59,999</div>
+          <div class="srt-text" id="cond2"><span id="condDaily">3</span> free translations per day. A license key removes the limit.</div>
+        </div>
+        <div class="srt-cue">
+          <div class="srt-idx">3</div>
+          <div class="srt-time">00:00:15,000 --> 00:00:15,001</div>
+          <div class="srt-text" id="cond3">Files over 15 MB are compressed first — you'll see it happen.</div>
+        </div>
+        <div class="srt-cue">
+          <div class="srt-idx">4</div>
+          <div class="srt-time">00:00:00,000 --> 24:00:00,000</div>
+          <div class="srt-text" id="cond4">Everything is deleted 24 hours after upload. Download what you need.</div>
+        </div>
+        <div class="srt-cue">
+          <div class="srt-idx">5</div>
+          <div class="srt-time">--:--:--,--- --> --:--:--,---</div>
+          <div class="srt-text" id="cond5">Closing this tab cancels your queued or running job. Editing can wait; processing can't.</div>
+        </div>
+        <div class="srt-cue">
+          <div class="srt-idx">6</div>
+          <div class="srt-time">00:00:00,000 --> 168:00:00,000</div>
+          <div class="srt-text" id="cond6">License keys: message <a id="condTg" href="#" target="_blank" rel="noopener noreferrer">@it_link_a</a> on Telegram. One activation lasts a week.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="license-box" id="licenseBox">
+      <div class="license-title" id="licenseTitle">Have a license key?</div>
+      <div id="licenseInfo">Free usage is limited per day. A license key removes the limit.
+        To obtain a key, contact <a id="tgLink" href="#" target="_blank" rel="noopener noreferrer"></a> on Telegram.</div>
+      <div class="license-row" id="licenseRow">
+        <input type="text" id="licenseInput" placeholder="SUBS-XXXX-XXXX-XXXX-XXXX" autocomplete="off" spellcheck="false" />
+        <button id="licenseBtn">Activate</button>
+      </div>
+      <div class="license-msg" id="licenseMsg"></div>
+      <div class="quota-note" id="quotaNote"></div>
+    </div>
+  </div>
+
+  <!-- ============ VIEW 2: EDITOR ============ -->
+  <div id="editorView">
+    <div class="player-wrap">
+      <video id="player" controls preload="metadata"></video>
+    </div>
+    <div class="player-note" id="playerNote">
+      This browser can't preview this format. Editing and burning still work — the final file will be fine.
+    </div>
+
+    <div class="editor-toolbar">
+      <div class="editor-title" id="editorTitle">Translated subtitles</div>
+      <div class="cue-count" id="cueCount"></div>
+    </div>
+
+    <div class="cue-list" id="cueList"></div>
+
+    <button class="btn green" id="applyBtn"></button>
+  </div>
+
+  <p class="warn-note" id="warnNote">ONE FILE AT A TIME · QUEUED IN ORDER OF ARRIVAL · POSITION SHOWN LIVE</p>
+
+  <nav class="legal-links">
+    <a href="/impressum.html">Impressum</a>
+    <span class="ll-sep">·</span>
+    <a href="/datenschutz.html">Datenschutz</a>
+  </nav>
+
+  <p class="ua-footer"><span id="madeWith">Made with love to Ukraine</span>
+    <svg class="ua-heart" width="13" height="13" viewBox="0 0 24 24" aria-hidden="true" role="img">
+      <defs>
+        <linearGradient id="uaHeartGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0.5" stop-color="#005BBB"/>
+          <stop offset="0.5" stop-color="#FFD500"/>
+        </linearGradient>
+      </defs>
+      <path fill="url(#uaHeartGrad)" d="M12 21s-7.6-4.9-10.1-9.3C.3 8.8 1.7 5.3 4.8 4.2c2-.7 4.3 0 5.7 1.7L12 7.5l1.5-1.6c1.4-1.7 3.7-2.4 5.7-1.7 3.1 1.1 4.5 4.6 2.9 7.5C19.6 16.1 12 21 12 21z"/>
+    </svg>
+  </p>
+</div>
+
+<div class="cookie-banner" id="cookieBanner" role="dialog" aria-live="polite" aria-label="Cookie notice" hidden>
+  <div class="cookie-inner">
+    <p class="cookie-text" id="cookieText">This site uses only technically necessary and functional cookies — no tracking, no advertising. See our <a href="/datenschutz.html">privacy policy</a>.</p>
+    <button class="cookie-btn" id="cookieOk">OK</button>
+  </div>
+</div>
+
+<script>
+/* ================= i18n ================= */
+window.I18N = {
+  en: {
+    eyebrow: 'Video Subtitle Studio',
+    h1: 'Speak any language.<br>Leave <em>subtitled</em> in English.',
+    step_upload: 'UPLOAD', step_edit: 'EDIT', step_burn: 'BURN',
+    lede: 'Whisper transcribes and translates your video to English. You review every line beside the player, then the subtitles are burned into the file.',
+    lede_editor: 'Review the subtitles, click a timestamp to jump the video there, edit any text, then apply.',
+    drop_label: 'Drop your video here or <strong>browse</strong>',
+    drop_hint: 'Supported: {exts} — max {min} minutes',
+    lbl_language: 'Language of video', hint_language: 'The language spoken in the video',
+    lbl_model: 'Model', hint_model: 'Larger = more accurate, slower',
+    btn_upload: 'Upload & generate subtitles',
+    quota_left: 'FREE TRANSLATIONS LEFT TODAY: <span class="q-num">{n}</span> of {total}',
+    quota_zero_suffix: ' — enter a license key below',
+    quota_licensed: 'LICENSE ACTIVE — <span class="q-num">unlimited</span> translations',
+    srt_always: 'always in effect',
+    cond1: 'Videos up to <span id="condMinutesTxt">7</span> minutes long.',
+    cond2: '<span id="condDaily">3</span> free translations per day. A license key removes the limit.',
+    cond3: "Files over 15 MB are compressed first — you'll see it happen.",
+    cond4: 'Everything is deleted 24 hours after upload. Download what you need.',
+    cond5: "Closing this tab cancels your queued or running job. Editing can wait; processing can't.",
+    cond6: 'License keys: message <a id="condTg" href="#" target="_blank" rel="noopener noreferrer">@it_link_a</a> on Telegram. One activation lasts a week.',
+    lic_title: 'Have a license key?', lic_title_active: '\u2713 License active',
+    lic_info: 'Free usage is limited per day. A license key removes the limit. To obtain a key, contact <a id="tgLink" href="#" target="_blank" rel="noopener noreferrer"></a> on Telegram.',
+    lic_info_active: 'Unlimited translations enabled on this browser.',
+    btn_activate: 'Activate',
+    lic_checking: 'Checking\u2026',
+    lic_ok: 'License activated — valid for {d} days on this browser.',
+    quota_note: 'Free translations left today: {n} of {total}.',
+    editor_title: 'Translated subtitles',
+    player_note: "This browser can't preview this format. Editing and burning still work — the final file will be fine.",
+    btn_apply: 'Apply translation', btn_apply_again: 'Apply translation again',
+    dl_video: 'Download subtitled video', dl_srt: 'Download .srt',
+    support_text: 'If you like this service, and if you want to support us to make it faster, no queues (requires more powerful servers) —',
+    btn_reset: 'Start over with a new video',
+    warn_note: 'ONE FILE AT A TIME · QUEUED IN ORDER OF ARRIVAL · POSITION SHOWN LIVE',
+    made_with: 'Made with love to Ukraine',
+    cookie_text: 'This site uses only technically necessary and functional cookies — no tracking, no advertising. See our <a href="/datenschutz.html">privacy policy</a>.',
+    cookie_ok: 'OK',
+    st_uploading_t: 'Uploading\u2026', st_uploading_m: 'Sending your file to the server.',
+    st_queued_t: 'Queued',
+    st_queued_m: 'Position in queue for {what}: {pos}. Keep this page open.',
+    what_transcription: 'transcription', what_burn: 'burning',
+    st_compress_t: 'Compressing video', st_compress_m: 'Your file is large — shrinking it first to speed everything up\u2026',
+    st_transcribe_t: 'Generating subtitles', st_transcribe_m: 'Whisper is transcribing your video. This can take a while on long videos\u2026',
+    st_burn_t: 'Burning subtitles', st_burn_m: 'ffmpeg is rendering subtitles into your video\u2026',
+    st_burn_queued_m: 'Your burn job is queued. Keep this page open.',
+    st_done_t: 'Done \u2713', st_done_m: 'Subtitles are burned into your video.',
+    e_limit_t: 'Daily limit reached',
+    e_upload_t: 'Upload failed',
+    e_net_t: 'Network error', e_net_m: 'Could not send the file.',
+    e_proc_t: 'Processing failed', e_generic_m: 'An error occurred.',
+    e_session_t: 'Session error', e_session_m: 'The server did not recognize the job. Please try again.',
+    e_conn_t: 'Connection lost', e_conn_m: 'Lost connection to the server. The job was cancelled — please try again.',
+    e_editor_t: 'Editor failed to open', e_load_srt: 'Failed to load subtitles',
+    e_apply_t: 'Apply failed',
+    e_opts_t: 'Failed to load options', e_opts_m: 'Could not reach the server. Refresh the page.',
+    cue_count: '{n} segments — click a timestamp to seek the video',
+    cue_seek_title: 'Jump video to this moment',
+    hero_cues: ['Upload a video. Whisper listens.', 'Every line is yours to edit.', 'ffmpeg burns it in. Forever.', 'Seven minutes of anything, subtitled.']
+  },
+  uk: {
+    eyebrow: 'Студія відеосубтитрів',
+    h1: 'Говоріть будь-якою мовою.<br>Виходьте із <em>субтитрами</em> англійською.',
+    step_upload: 'ЗАВАНТАЖ', step_edit: 'РЕДАГУЙ', step_burn: 'ВШИЙ',
+    lede: 'Whisper розшифровує та перекладає ваше відео англійською. Ви переглядаєте кожен рядок поруч із плеєром, після чого субтитри вшиваються у файл.',
+    lede_editor: 'Перегляньте субтитри, клацніть на часі, щоб перемотати відео, відредагуйте текст і застосуйте.',
+    drop_label: 'Перетягніть відео сюди або <strong>оберіть файл</strong>',
+    drop_hint: 'Формати: {exts} — до {min} хвилин',
+    lbl_language: 'Мова відео', hint_language: 'Мова, якою говорять у відео',
+    lbl_model: 'Модель', hint_model: 'Більша = точніше, але повільніше',
+    btn_upload: 'Завантажити й створити субтитри',
+    quota_left: 'БЕЗКОШТОВНИХ ПЕРЕКЛАДІВ СЬОГОДНІ: <span class="q-num">{n}</span> з {total}',
+    quota_zero_suffix: ' — введіть ліцензійний ключ нижче',
+    quota_licensed: 'ЛІЦЕНЗІЯ АКТИВНА — переклади <span class="q-num">без обмежень</span>',
+    srt_always: 'діє завжди',
+    cond1: 'Відео тривалістю до <span id="condMinutesTxt">7</span> хвилин.',
+    cond2: '<span id="condDaily">3</span> безкоштовні переклади на день. Ліцензійний ключ знімає обмеження.',
+    cond3: 'Файли понад 15 МБ спершу стискаються — ви це побачите.',
+    cond4: 'Усе видаляється через 24 години після завантаження. Завантажте потрібне вчасно.',
+    cond5: 'Закриття вкладки скасовує вашу задачу — і в черзі, і в обробці. Редагування може почекати; обробка — ні.',
+    cond6: 'Ліцензійні ключі: напишіть <a id="condTg" href="#" target="_blank" rel="noopener noreferrer">@it_link_a</a> у Telegram. Одна активація діє тиждень.',
+    lic_title: 'Маєте ліцензійний ключ?', lic_title_active: '\u2713 Ліцензія активна',
+    lic_info: 'Безкоштовне використання обмежене на день. Ліцензійний ключ знімає обмеження. Щоб отримати ключ, напишіть <a id="tgLink" href="#" target="_blank" rel="noopener noreferrer"></a> у Telegram.',
+    lic_info_active: 'Необмежені переклади увімкнено в цьому браузері.',
+    btn_activate: 'Активувати',
+    lic_checking: 'Перевіряємо\u2026',
+    lic_ok: 'Ліцензію активовано — діє {d} дн. у цьому браузері.',
+    quota_note: 'Безкоштовних перекладів сьогодні: {n} з {total}.',
+    editor_title: 'Перекладені субтитри',
+    player_note: 'Цей браузер не може відтворити цей формат. Редагування та вшивання все одно працюють — фінальний файл буде в порядку.',
+    btn_apply: 'Застосувати переклад', btn_apply_again: 'Застосувати переклад ще раз',
+    dl_video: 'Завантажити відео із субтитрами', dl_srt: 'Завантажити .srt',
+    support_text: 'Якщо вам подобається цей сервіс і ви хочете допомогти зробити його швидшим, без черг (потрібні потужніші сервери) —',
+    btn_reset: 'Почати з новим відео',
+    warn_note: 'ОДИН ФАЙЛ ЗА РАЗ · ЧЕРГА В ПОРЯДКУ НАДХОДЖЕННЯ · ПОЗИЦІЯ ОНОВЛЮЄТЬСЯ НАЖИВО',
+    made_with: 'Зроблено з любов\u2019ю до України',
+    cookie_text: 'Цей сайт використовує лише технічно необхідні та функціональні файли cookie — без стеження й реклами. Див. нашу <a href="/datenschutz.html">політику конфіденційності</a>.',
+    cookie_ok: 'ОК',
+    st_uploading_t: 'Завантаження\u2026', st_uploading_m: 'Надсилаємо ваш файл на сервер.',
+    st_queued_t: 'У черзі',
+    st_queued_m: 'Позиція в черзі на {what}: {pos}. Не закривайте сторінку.',
+    what_transcription: 'розшифрування', what_burn: 'вшивання',
+    st_compress_t: 'Стискаємо відео', st_compress_m: 'Ваш файл великий — спершу стискаємо його, щоб усе пришвидшити\u2026',
+    st_transcribe_t: 'Створюємо субтитри', st_transcribe_m: 'Whisper розшифровує ваше відео. Для довгих відео це може тривати довго\u2026',
+    st_burn_t: 'Вшиваємо субтитри', st_burn_m: 'ffmpeg вшиває субтитри у ваше відео\u2026',
+    st_burn_queued_m: 'Задачу вшивання поставлено в чергу. Не закривайте сторінку.',
+    st_done_t: 'Готово \u2713', st_done_m: 'Субтитри вшито у ваше відео.',
+    e_limit_t: 'Денний ліміт вичерпано',
+    e_upload_t: 'Помилка завантаження',
+    e_net_t: 'Помилка мережі', e_net_m: 'Не вдалося надіслати файл.',
+    e_proc_t: 'Помилка обробки', e_generic_m: 'Сталася помилка.',
+    e_session_t: 'Помилка сесії', e_session_m: 'Сервер не розпізнав задачу. Спробуйте ще раз.',
+    e_conn_t: 'З\u2019єднання втрачено', e_conn_m: 'Втрачено з\u2019єднання із сервером. Задачу скасовано — спробуйте ще раз.',
+    e_editor_t: 'Не вдалося відкрити редактор', e_load_srt: 'Не вдалося завантажити субтитри',
+    e_apply_t: 'Не вдалося застосувати',
+    e_opts_t: 'Не вдалося завантажити налаштування', e_opts_m: 'Сервер недоступний. Оновіть сторінку.',
+    cue_count: '{n} сегментів — клацніть на часі, щоб перемотати відео',
+    cue_seek_title: 'Перемотати відео до цього моменту',
+    hero_cues: ['Завантажте відео. Whisper слухає.', 'Кожен рядок — ваш для редагування.', 'ffmpeg вшиває назавжди.', 'Сім хвилин будь-чого — із субтитрами.']
+  }
+};
+
+window.getLang = function () {
+  try {
+    var l = localStorage.getItem('lang');
+    if (l === 'uk' || l === 'en') return l;
+  } catch (e) {}
+  return 'en';
+};
+
+window.t = function (key, vars) {
+  var lang = window.getLang();
+  var str = (window.I18N[lang] && window.I18N[lang][key]) || window.I18N.en[key] || key;
+  if (vars) for (var k in vars) str = str.split('{' + k + '}').join(vars[k]);
+  return str;
+};
+
+window.applyStaticI18n = function () {
+  var lang = window.getLang();
+  document.documentElement.lang = lang;
+  var T = function (id, key, html) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    if (html) el.innerHTML = window.t(key); else el.textContent = window.t(key);
+  };
+  T('brandEyebrow', 'eyebrow');
+  T('brandTitle', 'h1', true);
+  T('stepUpload', 'step_upload'); T('stepEdit', 'step_edit'); T('stepBurn', 'step_burn');
+  T('dropLabel', 'drop_label', true);
+  T('lblLanguage', 'lbl_language'); T('hintLanguage', 'hint_language');
+  T('lblModel', 'lbl_model'); T('hintModel', 'hint_model');
+  T('uploadBtn', 'btn_upload');
+  T('srtAlways', 'srt_always');
+  T('cond1', 'cond1', true); T('cond2', 'cond2', true); T('cond3', 'cond3', true);
+  T('cond4', 'cond4', true); T('cond5', 'cond5', true); T('cond6', 'cond6', true);
+  T('editorTitle', 'editor_title');
+  T('playerNote', 'player_note');
+  T('downloadVideoLink', 'dl_video'); T('downloadSrtLink', 'dl_srt');
+  T('supportText', 'support_text');
+  T('resetBtn', 'btn_reset');
+  T('warnNote', 'warn_note');
+  T('madeWith', 'made_with');
+  var ck = document.getElementById('cookieText'); if (ck) ck.innerHTML = window.t('cookie_text');
+  var cok = document.getElementById('cookieOk'); if (cok) cok.textContent = window.t('cookie_ok');
+  // lede depends on current phase (upload vs editor)
+  var lede = document.getElementById('pageSubtitle');
+  if (lede) {
+    var inEditor = document.getElementById('editorView') && document.getElementById('editorView').classList.contains('visible');
+    lede.textContent = window.t(inEditor ? 'lede_editor' : 'lede');
+  }
+  // applyBtn label: keep 'again' variant if a burn already completed
+  var ab = document.getElementById('applyBtn');
+  if (ab) ab.textContent = window.t(ab.dataset.again === '1' ? 'btn_apply_again' : 'btn_apply');
+  // license box statics are managed by refreshLicenseStatus (dynamic states)
+  var en = document.getElementById('langEn'), uk = document.getElementById('langUk');
+  if (en && uk) {
+    en.classList.toggle('on', lang === 'en');
+    uk.classList.toggle('on', lang === 'uk');
+  }
+};
+
+window.setLang = function (lang) {
+  try { localStorage.setItem('lang', lang); } catch (e) {}
+  window.applyStaticI18n();
+  if (typeof window.__onLangChange === 'function') window.__onLangChange();
+};
+
+document.addEventListener('DOMContentLoaded', function () {
+  window.applyStaticI18n();
+  var en = document.getElementById('langEn'), uk = document.getElementById('langUk');
+  if (en) en.addEventListener('click', function () { window.setLang('en'); });
+  if (uk) uk.addEventListener('click', function () { window.setLang('uk'); });
+
+  // Cookie notice — informational (only necessary/functional cookies are used).
+  // Shown once until acknowledged; the choice is remembered in localStorage.
+  var banner = document.getElementById('cookieBanner');
+  var okBtn = document.getElementById('cookieOk');
+  var seen = false;
+  try { seen = localStorage.getItem('cookie_notice') === 'ok'; } catch (e) {}
+  if (banner && !seen) banner.hidden = false;
+  if (okBtn) okBtn.addEventListener('click', function () {
+    try { localStorage.setItem('cookie_notice', 'ok'); } catch (e) {}
+    if (banner) banner.hidden = true;
+  });
+});
+</script>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const card = $('card'), pageSubtitle = $('pageSubtitle');
+  const uploadView = $('uploadView'), editorView = $('editorView');
+  const dropZone = $('dropZone'), fileInput = $('fileInput'), dropHint = $('dropHint');
+  const fileInfo = $('fileInfo'), fileName = $('fileName'), fileSize = $('fileSize');
+  const languageSelect = $('languageSelect'), modelSelect = $('modelSelect');
+  const uploadBtn = $('uploadBtn');
+  const statusPanel = $('statusPanel'), statusTitle = $('statusTitle'), statusMsg = $('statusMessage');
+  const uploadProgress = $('uploadProgress'), uploadProgressBar = $('uploadProgressBar');
+  const procBar = $('procBar');
+  const downloadVideoLink = $('downloadVideoLink'), downloadSrtLink = $('downloadSrtLink');
+  const resetBtn = $('resetBtn');
+  const supportBlock = $('supportBlock'), supportLink = $('supportLink');
+  const licenseBox = $('licenseBox'), licenseTitle = $('licenseTitle'), licenseInfo = $('licenseInfo');
+  const licenseRow = $('licenseRow'), licenseInput = $('licenseInput'), licenseBtn = $('licenseBtn');
+  const licenseMsg = $('licenseMsg'), quotaNote = $('quotaNote'), tgLink = $('tgLink');
+  const player = $('player'), playerNote = $('playerNote');
+
+  let supportCfg = null; // { url, name } from /options, or null
+  let opts_tgContact = null; // telegram handle from /options
+  let lastOpts = null;       // full /options payload, for live language switching
+
+  // ------------------------------------------------------------------
+  // Preference cookies: remember language & model between visits
+  // ------------------------------------------------------------------
+  const PREF_TTL_DAYS = 180;
+
+  function setCookie(name, value, days) {
+    document.cookie = name + '=' + encodeURIComponent(value) +
+      '; Max-Age=' + (days * 24 * 60 * 60) + '; Path=/; SameSite=Lax';
+  }
+
+  function getCookie(name) {
+    for (const part of document.cookie.split(';')) {
+      const idx = part.indexOf('=');
+      if (idx === -1) continue;
+      if (part.slice(0, idx).trim() === name) {
+        try { return decodeURIComponent(part.slice(idx + 1).trim()); }
+        catch { return part.slice(idx + 1).trim(); }
+      }
+    }
+    return null;
+  }
+
+  function restorePref(selectEl, cookieName) {
+    const saved = getCookie(cookieName);
+    if (!saved) return;
+    // Only restore if the saved value is still a valid option
+    for (const opt of selectEl.options) {
+      if (opt.value === saved) { selectEl.value = saved; return; }
+    }
+  }
+
+  function savePrefs() {
+    setCookie('pref_language', languageSelect.value, PREF_TTL_DAYS);
+    setCookie('pref_model', modelSelect.value, PREF_TTL_DAYS);
+  }
+
+  languageSelect.addEventListener('change', savePrefs);
+  modelSelect.addEventListener('change', savePrefs);
+  const cueList = $('cueList'), cueCount = $('cueCount'), applyBtn = $('applyBtn');
+
+  let selectedFile = null;
+  let ws = null;
+  let finished = false;
+  let sessionId = null;
+  let srtFileName = null;
+  let cues = [];            // [{ start, end, startSec, text }]
+  let activeCueIdx = -1;
+
+  // ------------------------------------------------------------------
+  // SRT parse / serialize
+  // ------------------------------------------------------------------
+  const TIME_RE = /(\d{2}):(\d{2}):(\d{2})[,.](\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2})[,.](\d{3})/;
+
+  function parseSrt(text) {
+    const out = [];
+    const blocks = text.replace(/\r/g, '').split(/\n{2,}/);
+    for (const block of blocks) {
+      const lines = block.split('\n').filter(l => l.trim() !== '' || true);
+      let i = 0;
+      // optional numeric index line
+      if (i < lines.length && /^\d+$/.test(lines[i].trim())) i++;
+      if (i >= lines.length) continue;
+      const m = lines[i].match(TIME_RE);
+      if (!m) continue;
+      i++;
+      const start = `${m[1]}:${m[2]}:${m[3]},${m[4]}`;
+      const end = `${m[5]}:${m[6]}:${m[7]},${m[8]}`;
+      const startSec = (+m[1]) * 3600 + (+m[2]) * 60 + (+m[3]) + (+m[4]) / 1000;
+      const endSec = (+m[5]) * 3600 + (+m[6]) * 60 + (+m[7]) + (+m[8]) / 1000;
+      const text_ = lines.slice(i).join('\n').trim();
+      if (text_ === '') continue;
+      out.push({ start, end, startSec, endSec, text: text_ });
+    }
+    return out;
+  }
+
+  function serializeSrt(cueArr) {
+    return cueArr
+      .map((c, i) => `${i + 1}\n${c.start} --> ${c.end}\n${c.text.trim()}`)
+      .join('\n\n') + '\n';
+  }
+
+  // ------------------------------------------------------------------
+  // Options bootstrap
+  // ------------------------------------------------------------------
+  fetch('/options')
+    .then(r => r.json())
+    .then(opts => {
+      for (const lang of opts.languages) {
+        const o = document.createElement('option');
+        o.value = lang.value;
+        o.textContent = lang.label + ' (' + lang.code + ')';
+        languageSelect.appendChild(o);
+      }
+      for (const m of opts.models) {
+        const o = document.createElement('option');
+        o.value = m;
+        o.textContent = m;
+        modelSelect.appendChild(o);
+      }
+      lastOpts = opts;
+      // Restore last-used selections from cookies (if still valid options)
+      restorePref(languageSelect, 'pref_language');
+      restorePref(modelSelect, 'pref_model');
+      dropHint.textContent = window.t('drop_hint', { exts: opts.allowedExtensions.join(', '), min: Math.round(opts.maxDurationSec / 60) });
+      // accept = конкретные расширения + video/* (iPhone тогда сразу предлагает видео из галереи)
+      fileInput.accept = opts.allowedExtensions.join(',') + ',video/*';
+      if (opts.tgContact) {
+        opts_tgContact = opts.tgContact;
+        const handle = opts.tgContact.replace(/^@/, '');
+        tgLink.textContent = opts.tgContact;
+        tgLink.href = 'https://t.me/' + handle;
+        const condTg = document.getElementById('condTg');
+        if (condTg) { condTg.textContent = opts.tgContact; condTg.href = 'https://t.me/' + handle; }
+      }
+      const minutes = Math.round(opts.maxDurationSec / 60);
+      const condMin = document.getElementById('condMinutes');
+      if (condMin) condMin.textContent = String(minutes).padStart(2, '0');
+      const condMinTxt = document.getElementById('condMinutesTxt');
+      if (condMinTxt) condMinTxt.textContent = minutes;
+      const condDaily = document.getElementById('condDaily');
+      if (condDaily) condDaily.textContent = opts.dailyLimit;
+      if (opts.support && opts.support.url) {
+        supportCfg = opts.support;
+        supportLink.href = supportCfg.url;
+        supportLink.textContent = supportCfg.name;
+      }
+    })
+    .catch(() => {
+      showStatus('error', window.t('e_opts_t'), window.t('e_opts_m'));
+    });
+
+  const quotaLabel = $('quotaLabel');
+
+  // Set the (empty) apply button label on load
+  applyBtn.textContent = window.t('btn_apply');
+
+  function renderQuotaLabel(st) {
+    if (!quotaLabel) return;
+    if (st.active) {
+      quotaLabel.className = 'quota-label licensed';
+      quotaLabel.innerHTML = window.t('quota_licensed');
+    } else {
+      quotaLabel.className = 'quota-label' + (st.remaining <= 1 ? ' low' : '');
+      quotaLabel.innerHTML = window.t('quota_left', { n: st.remaining, total: st.dailyLimit }) +
+        (st.remaining === 0 ? window.t('quota_zero_suffix') : '');
+    }
+  }
+
+  function refreshLicenseStatus() {
+    fetch('/license/status')
+      .then(r => r.json())
+      .then(st => {
+        renderQuotaLabel(st);
+        if (st.active) {
+          licenseBox.classList.add('active-license');
+          licenseBox.classList.remove('highlight');
+          licenseTitle.textContent = window.t('lic_title_active');
+          licenseInfo.textContent = window.t('lic_info_active');
+          licenseRow.style.display = 'none';
+          licenseMsg.textContent = '';
+          quotaNote.textContent = '';
+        } else {
+          licenseBox.classList.remove('active-license');
+          licenseTitle.textContent = window.t('lic_title');
+          licenseInfo.innerHTML = window.t('lic_info');
+          if (opts_tgContact) { var tl = document.getElementById('tgLink'); if (tl) { tl.textContent = opts_tgContact; tl.href = 'https://t.me/' + opts_tgContact.replace(/^@/, ''); } }
+          licenseRow.style.display = '';
+          quotaNote.textContent = window.t('quota_note', { n: st.remaining, total: st.dailyLimit });
+        }
+      })
+      .catch(() => {});
+  }
+  refreshLicenseStatus();
+
+  // Re-render dynamic (JS-generated) content when language changes live
+  window.__onLangChange = function () {
+    refreshLicenseStatus();          // license box + quota label
+    if (opts_tgContact) {            // re-link tg inside freshly translated license info
+      var tl = document.getElementById('tgLink');
+      if (tl) { tl.textContent = opts_tgContact; tl.href = 'https://t.me/' + opts_tgContact.replace(/^@/, ''); }
+      var ct = document.getElementById('condTg');
+      if (ct) { ct.textContent = opts_tgContact; ct.href = 'https://t.me/' + opts_tgContact.replace(/^@/, ''); }
+    }
+    if (typeof lastOpts !== 'undefined' && lastOpts) {   // drop hint uses opts
+      dropHint.textContent = window.t('drop_hint', { exts: lastOpts.allowedExtensions.join(', '), min: Math.round(lastOpts.maxDurationSec / 60) });
+      var cm = document.getElementById('condMinutesTxt'); if (cm) cm.textContent = Math.round(lastOpts.maxDurationSec / 60);
+      var cd = document.getElementById('condDaily'); if (cd) cd.textContent = lastOpts.dailyLimit;
+    }
+    if (cues && cues.length) renderCues();   // cue count label
+  };
+
+  licenseBtn.addEventListener('click', () => {
+    const key = licenseInput.value.trim();
+    if (!key) return;
+    licenseBtn.disabled = true;
+    licenseMsg.className = 'license-msg';
+    licenseMsg.textContent = window.t('lic_checking');
+    fetch('/license', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key })
+    })
+      .then(r => r.json().then(data => ({ ok: r.ok, data })))
+      .then(({ ok, data }) => {
+        if (!ok) throw new Error(data.error || 'Invalid key');
+        licenseMsg.className = 'license-msg ok';
+        licenseMsg.textContent = window.t('lic_ok', { d: data.ttlDays });
+        licenseInput.value = '';
+        refreshLicenseStatus();
+      })
+      .catch(err => {
+        licenseMsg.className = 'license-msg err';
+        licenseMsg.textContent = err.message;
+      })
+      .finally(() => { licenseBtn.disabled = false; });
+  });
+
+  function formatBytes(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+    if (b < 1073741824) return (b / 1048576).toFixed(1) + ' MB';
+    return (b / 1073741824).toFixed(2) + ' GB';
+  }
+
+  function setFile(file) {
+    selectedFile = file;
+    fileName.textContent = file.name;
+    fileSize.textContent = formatBytes(file.size);
+    fileInfo.classList.add('visible');
+    uploadBtn.disabled = false;
+  }
+
+  fileInput.addEventListener('change', () => { if (fileInput.files[0]) setFile(fileInput.files[0]); });
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+  });
+
+  function showStatus(type, title, message) {
+    statusPanel.className = 'status-panel visible ' + type;
+    statusTitle.textContent = title;
+    statusMsg.textContent = message;
+    uploadProgress.classList.toggle('visible', type === 'uploading');
+    procBar.classList.toggle('visible', type === 'processing');
+    downloadVideoLink.classList.remove('visible');
+    downloadSrtLink.classList.remove('visible');
+    supportBlock.classList.remove('visible');
+    resetBtn.classList.remove('visible');
+  }
+
+  function hideStatus() {
+    statusPanel.className = 'status-panel';
+  }
+
+  // ------------------------------------------------------------------
+  // Stage 1: upload -> transcribe
+  // ------------------------------------------------------------------
+  uploadBtn.addEventListener('click', () => {
+    if (!selectedFile) return;
+    savePrefs(); // remember the choices actually used
+    uploadBtn.disabled = true;
+    finished = false;
+    showStatus('uploading', window.t('st_uploading_t'), window.t('st_uploading_m'));
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/upload');
+
+    xhr.upload.onprogress = e => {
+      if (e.lengthComputable) {
+        uploadProgressBar.style.width = ((e.loaded / e.total) * 100).toFixed(1) + '%';
+      }
+    };
+
+    xhr.onload = () => {
+      let data = {};
+      try { data = JSON.parse(xhr.responseText); } catch {}
+      if (xhr.status !== 200) {
+        if (xhr.status === 429 && data.limitReached) {
+          showStatus('error', window.t('e_limit_t'), data.error);
+          licenseBox.classList.add('highlight');
+          licenseBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+          showStatus('error', window.t('e_upload_t'), data.error || ('HTTP ' + xhr.status));
+        }
+        resetBtn.classList.add('visible');
+        uploadBtn.disabled = false;
+        refreshLicenseStatus();
+        return;
+      }
+      sessionId = data.jobId;
+      refreshLicenseStatus(); // a free slot was just consumed — update the counter
+      connectWs(data.jobId);
+    };
+
+    xhr.onerror = () => {
+      showStatus('error', window.t('e_net_t'), window.t('e_net_m'));
+      resetBtn.classList.add('visible');
+      uploadBtn.disabled = false;
+    };
+
+    const fd = new FormData();
+    fd.append('video', selectedFile);
+    fd.append('language', languageSelect.value);
+    fd.append('model', modelSelect.value);
+    xhr.send(fd);
+  });
+
+  // ------------------------------------------------------------------
+  // WebSocket (shared by both stages)
+  // ------------------------------------------------------------------
+  function connectWs(jobId) {
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    ws = new WebSocket(proto + '://' + location.host + '/ws?jobId=' + encodeURIComponent(jobId));
+
+    ws.onmessage = evt => {
+      let msg;
+      try { msg = JSON.parse(evt.data); } catch { return; }
+
+      if (msg.status === 'queued') {
+        const what = msg.stage === 'burn' ? window.t('what_burn') : window.t('what_transcription');
+        showStatus('queued', window.t('st_queued_t'), window.t('st_queued_m', { what: what, pos: msg.position }));
+      } else if (msg.status === 'processing') {
+        if (msg.stage === 'burn') {
+          showStatus('processing', window.t('st_burn_t'), window.t('st_burn_m'));
+        } else if (msg.stage === 'compress') {
+          showStatus('processing', window.t('st_compress_t'), window.t('st_compress_m'));
+        } else {
+          showStatus('processing', window.t('st_transcribe_t'), window.t('st_transcribe_m'));
+        }
+      } else if (msg.status === 'transcribed') {
+        finished = true;
+        ws.close();
+        refreshLicenseStatus();
+        openEditor(msg.videoFile, msg.srtFile);
+      } else if (msg.status === 'done') {
+        finished = true;
+        showStatus('done', window.t('st_done_t'), window.t('st_done_m'));
+        downloadVideoLink.href = '/outputs/' + encodeURIComponent(msg.outputFile);
+        downloadVideoLink.classList.add('visible');
+        if (srtFileName) {
+          downloadSrtLink.href = '/outputs/' + encodeURIComponent(srtFileName);
+          downloadSrtLink.classList.add('visible');
+        }
+        if (supportCfg) supportBlock.classList.add('visible');
+        resetBtn.classList.add('visible');
+        applyBtn.disabled = false;
+        applyBtn.dataset.again = '1';
+        applyBtn.textContent = window.t('btn_apply_again');
+        ws.close();
+      } else if (msg.status === 'error') {
+        finished = true;
+        showStatus('error', window.t('e_proc_t'), msg.message || window.t('e_generic_m'));
+        resetBtn.classList.add('visible');
+        if (msg.stage === 'burn') applyBtn.disabled = false;
+        else uploadBtn.disabled = false;
+        ws.close();
+      }
+    };
+
+    ws.onclose = evt => {
+      if (finished) return;
+      if (evt.code === 4000 || evt.code === 4001) {
+        showStatus('error', window.t('e_session_t'), window.t('e_session_m'));
+      } else {
+        showStatus('error', window.t('e_conn_t'), window.t('e_conn_m'));
+      }
+      resetBtn.classList.add('visible');
+      uploadBtn.disabled = false;
+      applyBtn.disabled = false;
+    };
+  }
+
+  // ------------------------------------------------------------------
+  // Editor
+  // ------------------------------------------------------------------
+  function openEditor(videoFile, srtFile) {
+    srtFileName = srtFile;
+    hideStatus();
+
+    // Load SRT
+    fetch('/srt/' + encodeURIComponent(sessionId))
+      .then(r => { if (!r.ok) throw new Error(window.t('e_load_srt')); return r.text(); })
+      .then(text => {
+        cues = parseSrt(text);
+        renderCues();
+
+        uploadView.classList.add('hidden');
+        editorView.classList.add('visible');
+        card.classList.add('wide');
+        editorView.appendChild(statusPanel); // status follows the active phase: now under "Apply translation" 
+        pageSubtitle.textContent = window.t('lede_editor');
+
+        // Player. Browsers natively play mp4/mov/m4v/webm (H.264/VP8/9);
+        // other containers won't preview — show the note. Editing/burning still work.
+        player.src = '/videos/' + encodeURIComponent(videoFile);
+        const playable = /\.(mp4|mov|m4v|webm|ogv)$/i.test(videoFile);
+        playerNote.classList.toggle('visible', !playable);
+        player.onerror = () => playerNote.classList.add('visible');
+      })
+      .catch(err => {
+        showStatus('error', window.t('e_editor_t'), err.message);
+        resetBtn.classList.add('visible');
+      });
+  }
+
+  function renderCues() {
+    cueList.innerHTML = '';
+    cueCount.textContent = window.t('cue_count', { n: cues.length });
+    cues.forEach((cue, idx) => {
+      const row = document.createElement('div');
+      row.className = 'cue';
+      row.dataset.idx = idx;
+
+      const time = document.createElement('div');
+      time.className = 'cue-time';
+      time.textContent = cue.start.replace(',', '.') + ' → ' + cue.end.replace(',', '.');
+      time.title = window.t('cue_seek_title');
+      time.addEventListener('click', () => {
+        player.currentTime = cue.startSec;
+        player.play().catch(() => {});
+      });
+
+      const ta = document.createElement('textarea');
+      ta.value = cue.text;
+      ta.addEventListener('input', () => { cues[idx].text = ta.value; });
+
+      row.appendChild(time);
+      row.appendChild(ta);
+      cueList.appendChild(row);
+    });
+  }
+
+  // Highlight + follow the active cue during playback
+  player.addEventListener('timeupdate', () => {
+    const t = player.currentTime;
+    let idx = -1;
+    for (let i = 0; i < cues.length; i++) {
+      if (t >= cues[i].startSec && t <= cues[i].endSec) { idx = i; break; }
+    }
+    if (idx === activeCueIdx) return;
+    const prev = cueList.querySelector('.cue.active');
+    if (prev) prev.classList.remove('active');
+    activeCueIdx = idx;
+    if (idx >= 0) {
+      const row = cueList.querySelector('.cue[data-idx="' + idx + '"]');
+      if (row) {
+        row.classList.add('active');
+        row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    }
+  });
+
+  // ------------------------------------------------------------------
+  // Stage 2: apply -> burn
+  // ------------------------------------------------------------------
+  applyBtn.addEventListener('click', () => {
+    if (!sessionId || cues.length === 0) return;
+    applyBtn.disabled = true;
+    finished = false;
+
+    const srt = serializeSrt(cues);
+
+    fetch('/apply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jobId: sessionId, srt })
+    })
+      .then(r => r.json().then(data => ({ ok: r.ok, data })))
+      .then(({ ok, data }) => {
+        if (!ok) throw new Error(data.error || window.t('e_apply_t'));
+        showStatus('queued', window.t('st_queued_t'), window.t('st_burn_queued_m'));
+        connectWs(data.jobId);
+      })
+      .catch(err => {
+        showStatus('error', window.t('e_apply_t'), err.message);
+        applyBtn.disabled = false;
+        resetBtn.classList.add('visible');
+      });
+  });
+
+  // ------------------------------------------------------------------
+  // Reset
+  // ------------------------------------------------------------------
+  resetBtn.addEventListener('click', () => {
+    if (ws) { finished = true; ws.close(); ws = null; }
+    selectedFile = null;
+    sessionId = null;
+    srtFileName = null;
+    cues = [];
+    activeCueIdx = -1;
+    fileInput.value = '';
+    fileInfo.classList.remove('visible');
+    hideStatus();
+    uploadProgressBar.style.width = '0%';
+    uploadBtn.disabled = true;
+    applyBtn.disabled = false;
+    applyBtn.dataset.again = '';
+    applyBtn.textContent = window.t('btn_apply');
+    player.removeAttribute('src'); player.load();
+    editorView.classList.remove('visible');
+    uploadView.classList.remove('hidden');
+    uploadBtn.insertAdjacentElement('afterend', statusPanel); // back under the upload button
+    card.classList.remove('wide');
+    pageSubtitle.textContent = window.t('lede');
+  });
+})();
+</script>
+
+<script>
+/* Hero: live timecode + cycling subtitle cues (decorative only) */
+(function () {
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var tc = document.getElementById('heroTc');
+  var sub = document.getElementById('heroSub');
+  if (!tc || !sub) return;
+
+  function heroCues() {
+    return (window.I18N[window.getLang()] && window.I18N[window.getLang()].hero_cues) || window.I18N.en.hero_cues;
+  }
+  var i = 0;
+  sub.textContent = heroCues()[0];
+
+  // Keep the visible hero line correct when language switches live
+  var prevHook = window.__onLangChange;
+  window.__onLangChange = function () {
+    if (typeof prevHook === 'function') prevHook();
+    sub.textContent = heroCues()[i];
+  };
+
+  if (reduced) return; // static first cue, frozen timecode
+
+  var t0 = performance.now();
+  function fmt(ms) {
+    var s = Math.floor(ms / 1000);
+    var h = String(Math.floor(s / 3600)).padStart(2, '0');
+    var m = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+    var ss = String(s % 60).padStart(2, '0');
+    var mmm = String(Math.floor(ms % 1000)).padStart(3, '0');
+    return h + ':' + m + ':' + ss + ',' + mmm;
+  }
+  (function tick() {
+    tc.textContent = fmt(performance.now() - t0);
+    requestAnimationFrame(tick);
+  })();
+
+  var i = 0;
+  setInterval(function () {
+    sub.classList.add('fading');
+    setTimeout(function () {
+      var c = heroCues();
+      i = (i + 1) % c.length;
+      sub.textContent = c[i];
+      sub.classList.remove('fading');
+    }, 450);
+  }, 4200);
+})();
+</script>
+</body>
+</html>
