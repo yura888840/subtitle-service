@@ -3,7 +3,7 @@
 const path = require('path');
 const { runScript, cancelCurrent } = require('./processor');
 const { deleteFile } = require('./cleanup');
-const { createSession, deleteSession } = require('./sessions');
+const { createSession } = require('./sessions');
 const cfg = require('./config');
 const log = require('./logger');
 
@@ -93,6 +93,19 @@ function removeAt(idx, reason) {
   notifyPositions();
 }
 
+/** Includes cancelling jobs until their process has actually stopped. */
+function hasActiveBurn(sessionId) {
+  return queue.some(job => job.stage === 'burn' && job.sessionId === sessionId &&
+    (job.status === 'queued' || job.status === 'processing'));
+}
+
+function complete(job, payload) {
+  // A short job may finish before the browser attaches its WebSocket.
+  // pendingJobs retains the job for the existing 30-second handshake window.
+  job.result = payload;
+  send(job.ws, payload);
+}
+
 function getQueueSnapshot() {
   return {
     workerBusy,
@@ -152,20 +165,16 @@ function maybeProcessNext() {
       job.status = 'done';
       if (job.stage === 'transcribe') {
         createSession(job.sessionId, job.videoPath, job.srtPath);
-        send(job.ws, {
+        complete(job, {
           status: 'transcribed',
           sessionId: job.sessionId,
           videoFile: path.basename(job.videoPath),
           srtFile: path.basename(job.srtPath)
         });
       } else {
-        send(job.ws, { status: 'done', outputFile: path.basename(job.outputPath) });
-        // Работа завершена: входное видео и промежуточный .srt больше не нужны —
-        // удаляем сразу. На диске остаётся только готовый субтитрированный .mp4
-        // (он живёт свой TTL). Сессию закрываем — повторный /apply не потребуется.
-        deleteFile(job.videoPath);
-        deleteFile(job.srtPath);
-        deleteSession(job.sessionId);
+        complete(job, { status: 'done', outputFile: path.basename(job.outputPath) });
+        // Keep the editable session, video and SRT until normal TTL cleanup.
+        // A successful render must not break downloads or a subsequent edit.
       }
       log.info('queue', `Job ${job.jobId} [${job.stage}] done.`);
     })
@@ -186,7 +195,7 @@ function maybeProcessNext() {
         return;
       }
 
-      send(job.ws, { status: 'error', stage: job.stage, message: err.message });
+      complete(job, { status: 'error', stage: job.stage, message: err.message });
       log.error('queue', `Job ${job.jobId} [${job.stage}] failed: ${err.message}`);
       if (job.stage === 'transcribe') {
         deleteFile(job.videoPath);
@@ -237,11 +246,13 @@ function send(ws, payload) {
 
 /** Push current status to a specific job (on WS connect). */
 function notifyJob(job) {
-  if (job.status === 'queued') {
+  if (job.result) {
+    send(job.ws, job.result);
+  } else if (job.status === 'queued') {
     send(job.ws, { status: 'queued', stage: job.stage, position: queuedPosition(job) });
   } else if (job.status === 'processing') {
     send(job.ws, { status: 'processing', stage: job.stage });
   }
 }
 
-module.exports = { enqueue, removeBySocket, removeByJobId, getQueueSnapshot, notifyJob, shutdown };
+module.exports = { hasActiveBurn, enqueue, removeBySocket, removeByJobId, getQueueSnapshot, notifyJob, shutdown };
