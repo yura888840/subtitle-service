@@ -22,7 +22,7 @@ function getSession(sessionId) {
   const s = sessions.get(sessionId);
   if (!s) return null;
   // A session is only valid while its files still exist (TTL may have removed them)
-  if (!fs.existsSync(s.videoPath) || !fs.existsSync(s.srtPath)) {
+  if (Date.now() - s.createdAt > cfg.FILE_TTL_MS || !fs.existsSync(s.videoPath) || !fs.existsSync(s.srtPath)) {
     sessions.delete(sessionId);
     return null;
   }

@@ -246,8 +246,8 @@ app.post('/upload', upload.single('video'), async (req, res) => {
 // Body: { jobId: <sessionId from stage 1>, srt: "<full srt text>" }
 // ---------------------------------------------------------------------------
 app.post('/apply', (req, res) => {
-  const sessionId = String(req.body.jobId || '');
-  const srt = req.body.srt;
+  const sessionId = String((req.body && req.body.jobId) || '');
+  const srt = req.body && req.body.srt;
 
   if (!sessionId || typeof srt !== 'string' || srt.trim().length === 0) {
     return res.status(400).json({ error: 'jobId and non-empty srt are required.' });
@@ -256,6 +256,12 @@ app.post('/apply', (req, res) => {
   const session = sessions.getSession(sessionId);
   if (!session) {
     return res.status(404).json({ error: 'Session not found or expired. Please upload the video again.' });
+  }
+
+  // Check before writing SRT. This handler is synchronous through enqueue,
+  // so concurrent HTTP requests cannot both reserve this session.
+  if (queue.hasActiveBurn(sessionId)) {
+    return res.status(409).json({ error: 'This session already has a queued or running render.' });
   }
 
   // Persist the edited subtitles (overwrites whisper output — the session
@@ -278,7 +284,7 @@ app.post('/apply', (req, res) => {
     videoPath: session.videoPath,
     srtPath: session.srtPath,
     // Always .mp4 — burn.sh re-encodes to H.264/AAC so the result plays everywhere
-    outputPath: path.join(cfg.OUTPUT_DIR, `${base}_subtitled.mp4`),
+    outputPath: path.join(cfg.OUTPUT_DIR, `${base}_${burnJobId}_subtitled.mp4`),
     language: null,
     model: null,
     uploadedAt: Date.now(),

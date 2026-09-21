@@ -19,8 +19,8 @@ RUN pip3 install --no-cache-dir --break-system-packages \
 WORKDIR /app
 
 # Node dependencies — separate layer for caching
-COPY package.json ./
-RUN npm install --omit=dev && npm cache clean --force
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev && npm cache clean --force
 
 # Application source
 COPY src/     ./src/

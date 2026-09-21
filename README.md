@@ -23,7 +23,7 @@ whisper "$TMP" --task translate --language "$LANGUAGE" --model "$MODEL" \
 
 **Stage 2 — burn** (`scripts/burn.sh`), runs after the user presses **Apply translation**:
 ```bash
-ffmpeg -y -i "$TMP" -vf "subtitles='$SRT_FILE'" -c:a copy "$OUTPUT"
+ffmpeg -y -i "$TMP" -vf "subtitles='$SRT_FILE'" -c:v libx264 -c:a aac "$OUTPUT"
 ```
 
 Between the stages the user edits subtitles in the browser: the original video plays in a `<video>` element (with seeking — the server supports HTTP Range), each subtitle segment is an editable text area, clicking a timestamp jumps the video to that moment, and the currently-spoken segment is highlighted and auto-scrolled during playback. After burning, the user can keep editing and press **Apply translation again** — the session lives until the 24 h TTL.
@@ -163,3 +163,10 @@ curl http://127.0.0.1:3000/health
 - Authentication (add `auth_basic` in nginx if needed).
 - Database — in-memory queue/sessions are the right call for one worker.
 - Editing subtitle *timings* in the UI — only text is editable. Timings from Whisper are usually good; add if users ask.
+
+## Migration baseline and regression checks
+
+See [the API and lifecycle contract](docs/api-contract.md) before changing the UI
+or worker. Run `npm ci && npm test` (Node 20+ and Bash). The regression suite uses
+stub media commands; it checks HTTP/WebSocket behavior without downloading Whisper.
+A real-media smoke test is still required before deploying processing changes.
