@@ -52,6 +52,12 @@ subtitle-service/
 └── .env.example
 ```
 
+## Next.js migration
+
+The optional Next.js web application and same-origin media gateway are described
+in [the development and deployment guide](docs/nextjs-development.md).
+The existing backend-only deployment below remains available.
+
 ## Quick start
 
 ```bash
