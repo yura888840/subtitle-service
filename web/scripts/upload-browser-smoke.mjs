@@ -3,7 +3,7 @@ import { chromium, expect } from '@playwright/test';
 
 // Called against the actual Next/Nginx/Express stack by gateway-smoke.mjs.
 // Error/state cases intercept transport; the happy path uses the real backend
-// and its stub media executables, including the legacy editor's render stage.
+// and its stub media executables, including the React editor's render stage.
 export async function testUploadBrowser(base) {
   const browser = await chromium.launch();
   const file = { name: 'fixture.mp4', mimeType: 'video/mp4', buffer: Buffer.from('video fixture') };
@@ -58,6 +58,19 @@ export async function testUploadBrowser(base) {
     await page.locator('#applyBtn').click();
     await expect(page.locator('#downloadVideoLink')).toBeVisible();
     assert.equal(await (await page.request.get(base + await page.locator('#downloadVideoLink').getAttribute('href'))).text(), '1\n00:00:00,000 --> 00:00:01,000\nEdited from React upload\n');
+    await page.locator('#cueList textarea').fill('Second render');
+    await expect(page.locator('#downloadVideoLink')).toHaveCount(0);
+    const downloadEvent = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Download edited SRT' }).click();
+    const download = await downloadEvent;
+    const chunks = [];
+    for await (const chunk of await download.createReadStream()) chunks.push(chunk);
+    assert.equal(Buffer.concat(chunks).toString(), '1\n00:00:00,000 --> 00:00:01,000\nSecond render\n');
+    await page.locator('#applyBtn').click();
+    await expect(page.locator('#downloadVideoLink')).toBeVisible();
+    assert.equal(await (await page.request.get(base + await page.locator('#downloadVideoLink').getAttribute('href'))).text(), '1\n00:00:00,000 --> 00:00:01,000\nSecond render\n');
+    await page.reload();
+    await expect(page.locator('#cueList textarea')).toHaveValue('Second render');
     await page.locator('#resetBtn').click();
     await page.waitForURL('**/studio');
     await expect(page.getByLabel('Language spoken in the video', { exact: true })).toHaveValue('Ukrainian');

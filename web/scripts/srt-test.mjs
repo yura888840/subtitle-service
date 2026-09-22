@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import { parseSrt, serializeSrt } from '../src/lib/srt.ts';
+const source = '\uFEFF1\r\n00:00:01,250 --> 00:00:02,500\r\nHello\r\nworld\r\n\r\n2\r\n00:00:03.000 --> 00:00:04.000\r\nПривіт <b>text</b>\r\n';
+const cues = parseSrt(source);
+assert.equal(cues.length, 2);
+assert.equal(cues[0].startSec, 1.25);
+assert.equal(cues[0].endSec, 2.5);
+assert.equal(cues[0].text, 'Hello\nworld');
+assert.deepEqual(parseSrt(serializeSrt(cues)), cues);
+for (const invalid of ['', 'broken', '1\n00:00:02,000 --> 00:00:01,000\nHi', '1\n00:61:00,000 --> 00:62:00,000\nHi']) assert.throws(() => parseSrt(invalid));
+assert.throws(() => serializeSrt([{ ...cues[0], text: '' }]));
+assert.throws(() => serializeSrt([{ ...cues[0], text: 'a\n\nb' }]));
+console.log('SRT checks passed: BOM/CRLF, multiline, Unicode, timing, round trip and invalid input.');

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { LicenseStatus, UploadOptions } from '@/lib/media-types';
@@ -23,6 +24,7 @@ async function jsonResponse(response: Response) {
 
 export function UploadStudio({ lang }: { lang: 'en' | 'uk' }) {
   const c = uploadCopy[lang];
+  const router = useRouter();
   const [options, setOptions] = useState<UploadOptions | null>(null);
   const [optionsError, setOptionsError] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -118,8 +120,7 @@ export function UploadStudio({ lang }: { lang: 'en' | 'uk' }) {
         setStatus({ kind: 'ready' });
         // A full navigation happens only after transcription has created the session.
         // The legacy editor resolves file names from the server, not URL input.
-        // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- /editor is an Express document, not a Next.js route.
-        location.assign(`/editor?sessionId=${encodeURIComponent(jobId)}&lang=${lang}`);
+        router.push(`${lang === 'uk' ? '/uk/editor' : '/editor'}?sessionId=${encodeURIComponent(jobId)}`);
       } else if (message.status === 'error') {
         terminal = true;
         fail(typeof message.message === 'string' ? message.message : c.processingError);

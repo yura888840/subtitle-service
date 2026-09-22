@@ -22,6 +22,8 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
+      - name: Test SRT parsing and serialization
+        run: node scripts/srt-test.mjs
       - run: npm run build
       - name: Test server-rendered pages and SEO
         run: node scripts/pages-smoke.mjs

@@ -61,3 +61,14 @@ summary { cursor: pointer; font-weight: 600; }
 .license-panel label { flex: 1; }
 .hint { color: #bdc4ce; line-height: 1.6; font-size: .9rem; }
 @media (max-width: 600px) { .upload-fields { grid-template-columns: 1fr; } .license-panel form { flex-direction: column; align-items: stretch; } }
+.subtitle-editor { max-width: 1200px; }
+.editor-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
+.editor-grid video { width: 100%; max-height: 65vh; background: #000; }
+.cue-list { max-height: 65vh; overflow-y: auto; border: 1px solid #657083; border-radius: 8px; }
+.cue { padding: 16px; border-left: 4px solid transparent; border-bottom: 1px solid #343943; }
+.cue.active { border-left-color: #ffdc87; background: #28271f; }
+.cue label { display: block; margin: 12px 0 6px; }
+.cue textarea { width: 100%; resize: vertical; padding: 10px; font: inherit; color: #f4f1e9; background: #1c2028; border: 1px solid #657083; border-radius: 6px; }
+.cue button { font-size: .8rem; overflow-wrap: anywhere; max-width: 100%; }
+.editor-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 16px 0; }
+@media (max-width: 760px) { .editor-grid { grid-template-columns: minmax(0, 1fr); } .cue-list { max-height: 55vh; } }

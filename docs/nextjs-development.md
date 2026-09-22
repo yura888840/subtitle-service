@@ -2,7 +2,7 @@
 
 `web/` is an independent Next.js App Router + TypeScript application. Its public
 landing page links to `/studio`, which serves the React upload form.
-The upload form now uses React; migrating the editor is step 5.
+Both the upload form and subtitle editor now use React.
 
 ## Run the Docker stack
 
@@ -18,7 +18,7 @@ Open `http://localhost:8080`. This localhost-only port is the unified Nginx entr
 | --- | --- |
 | `/`, `/uk`, `/seo`, `/uk/seo`, `/impressum`, `/datenschutz`, `/_next/*`, `/api/health` | Next.js web |
 | `/studio`, `/uk/studio` | React upload form |
-| `/editor?sessionId=...` | Existing Express editor, after transcription |
+| `/editor?sessionId=...`, `/uk/editor?sessionId=...` | React subtitle editor |
 | Legacy `.html` public URLs | Next.js permanent redirects |
 | `/upload`, `/apply`, `/options`, `/legal`, `/health`, `/license/*`, `/sessions/*` | Express API |
 | `/ws?jobId=...` | Express WebSocket (upgrade + four-hour timeout) |
@@ -74,7 +74,7 @@ Compose configuration. `npm ci` uses the committed web lockfile. Node 22+ is use
 for the web application; the existing media runtime is unchanged.
 
 Before switching the HTTPS proxy, verify through the gateway: landing and assets,
-legacy editor, options, license activation/cookie, a small upload, WebSocket
+React editor, options, license activation/cookie, a small upload, WebSocket
 status, video seeking (206 Range response), SRT/MP4 download and repeat rendering
 (after step 1 is merged). A first real Whisper run may download its model.
 
@@ -83,9 +83,9 @@ status, video seeking (206 Range response), SRT/MP4 download and repeat renderin
 Next.js serves `/` and `/uk` (English/Ukrainian home), `/seo` and `/uk/seo`
 (public subtitle guide), and German `/impressum` and `/datenschutz`.
 Shared layouts render the correct document language, navigation and footer.
-The React upload form is on `/studio` and `/uk/studio`; the existing editor remains on `/editor` until step 5.
+The React upload form is on `/studio` and `/uk/studio`; the React editor is on `/editor` and `/uk/editor`.
 A validated `?lang=en|uk` preserves the selected language on entry to the editor;
-the editor's own language switch remains available.
+the Ukrainian editor uses `/uk/editor`.
 
 Old public URLs use permanent 308 redirects: `/index.html` → `/`,
 `/impressum.html` → `/impressum`, `/datenschutz.html` → `/datenschutz`, and
@@ -106,7 +106,7 @@ Runtime settings for web:
 
 `/robots.txt` and `/sitemap.xml` expose public pages and exclude media paths from
 crawling. Robots directives are not access controls. The new pages use system
-fonts; the legacy editor at `/editor` still loads Google Fonts. Existing German legal wording
+fonts throughout, including the editor. Existing German legal wording
 is migrated, not independently legally reviewed; operator placeholders continue
 to come from the backend configuration.
 
@@ -126,8 +126,8 @@ from the user-triggered upload flow, and are closed on component unmount.
 The existing disconnect-cancels-job behavior remains: no automatic reconnection
 or persistent recovery is promised by this step.
 
-On `transcribed`, the browser navigates to `/editor?sessionId=...&lang=...`.
-The existing editor loads `/sessions/:sessionId` (no-store) for server-resolved
+On `transcribed`, the browser navigates to the localized `/editor?sessionId=...`.
+The React editor loads `/sessions/:sessionId` (no-store) for server-resolved
 file basenames, then uses `/srt/:sessionId`. It never re-uploads the video and
 reports a missing/expired session. Reset from this editor returns to React.
 The backend-only legacy `/` continues working with its existing upload UI.
@@ -136,5 +136,32 @@ CI installs Chromium and runs Playwright against the real Nginx/Next/Express
 stack in `scripts/gateway-smoke.mjs`. Browser checks cover client validation,
 license activation, saved preferences, progress and single submission, queue
 stages, HTTP/network/WS errors, unmount cleanup, Ukrainian UI, mobile overflow,
-and upload → legacy editor → edit → render → download with stub media commands.
+and upload → React editor → edit → render → download with stub media commands.
 The root tests also verify the session handoff response and expired-session 404.
+
+
+## React subtitle editor (step 5)
+
+`/editor` and `/uk/editor` load the session and current SRT client-side with
+no-store requests. The old `?lang=uk` entry redirects to `/uk/editor`.
+Nginx now routes both editor pages to Next.js; media and rendering remain in Express.
+The backend-only legacy UI stays available for rollback through the original stack.
+
+The editor preserves timestamps, supports multiline text, seeks from keyboard-accessible
+timestamp buttons and follows the active cue during playback. Unsupported browser
+video codecs show a note without preventing editing/rendering. Invalid or empty SRT
+fails explicitly instead of silently dropping subtitles. Empty cues and blank lines
+inside cues must be corrected before rendering or exporting.
+
+Apply posts the current SRT to `/apply`, then follows the returned burn job over
+WebSocket. The session ID remains separate from each burn job ID. Editing is disabled
+during rendering, duplicate submissions are blocked and failures retain the draft.
+After editing again, the old video download is hidden until the new render succeeds.
+SRT downloads contain the current local draft, including before a render. Successful
+apply persists SRT on the backend; reload restores that version. Unapplied edits are
+in component memory only. Leaving the page aborts requests and closes the socket,
+with the existing server cancellation behavior; no reconnect/resume is introduced.
+
+CI tests SRT round trips and invalid input, upload through two real render/download
+cycles using stub media commands, reload, local SRT export, playback cue selection,
+HTTP/WS errors, duplicate submits, cleanup, malformed SRT retry and Ukrainian/mobile UI.
