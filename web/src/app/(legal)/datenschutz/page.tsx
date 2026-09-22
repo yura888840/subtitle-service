@@ -115,7 +115,7 @@ export default async function Page() {
   <p>Die neuen Informationsseiten verwenden Systemschriftarten und rufen keine Google Fonts ab.</p>
   <h2 id="s7"><span className="n">07</span> Google Fonts</h2>
   <p>
-    Der bisherige Video-Editor unter /studio nutzt zur einheitlichen Darstellung von Schriftarten sogenannte Web Fonts, die von
+    Der bisherige Video-Editor unter /editor nutzt zur einheitlichen Darstellung von Schriftarten sogenannte Web Fonts, die von
     Google bereitgestellt werden. Beim Aufruf dieses Editors lädt Ihr Browser die benötigten Schriftarten,
     um Texte korrekt anzuzeigen. Dabei wird eine Verbindung zu Servern von Google (Google Ireland
     Limited, Gordon House, Barrow Street, Dublin 4, Irland) aufgebaut, wodurch Google Kenntnis von Ihrer

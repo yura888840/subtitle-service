@@ -54,7 +54,7 @@ export async function Marketing({ lang, seo = false }: { lang: 'en' | 'uk'; seo?
     <h1>{seo ? c.seoTitle : c.title}</h1>
     <p className="intro">{seo ? c.seoIntro : c.intro}</p>
     <nav className="language-links" aria-label="Page language"><Link href={seo ? '/seo' : '/'} hrefLang="en" aria-current={lang === 'en' ? 'page' : undefined}>English</Link><Link href={seo ? '/uk/seo' : '/uk'} hrefLang="uk" aria-current={lang === 'uk' ? 'page' : undefined}>Українська</Link></nav>
-    <a className="button" href={`/studio?lang=${lang}`}>{c.start} <span aria-hidden="true">→</span></a>
+    <a className="button" href={lang === 'uk' ? '/uk/studio' : '/studio'}>{c.start} <span aria-hidden="true">→</span></a>
     <ol className="steps">{c.steps.map(([title, text]) => <li key={title}><strong>{title}</strong><span>{text}</span></li>)}</ol>
     {seo ? <article className="article">
       {c.sections.map(([title, text]) => <section key={title}><h2>{title}</h2><p>{text}</p></section>)}

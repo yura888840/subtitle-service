@@ -1555,10 +1555,31 @@ document.addEventListener('DOMContentLoaded', function () {
       });
   });
 
+  // Step 4: a completed React upload can open the existing editor directly.
+  // Only the session ID comes from the URL; file names are resolved by the backend.
+  const resumedSession = new URLSearchParams(location.search).get('sessionId');
+  if (resumedSession) {
+    uploadBtn.disabled = true;
+    fetch('/sessions/' + encodeURIComponent(resumedSession), { cache: 'no-store' })
+      .then(r => { if (!r.ok) throw new Error(window.t('e_session_m')); return r.json(); })
+      .then(data => {
+        sessionId = data.sessionId;
+        openEditor(data.videoFile, data.srtFile);
+      })
+      .catch(err => {
+        showStatus('error', window.t('e_session_t'), err.message);
+        resetBtn.classList.add('visible');
+      });
+  }
+
   // ------------------------------------------------------------------
   // Reset
   // ------------------------------------------------------------------
   resetBtn.addEventListener('click', () => {
+    if (location.pathname === '/editor') {
+      location.assign(window.getLang() === 'uk' ? '/uk/studio' : '/studio');
+      return;
+    }
     if (ws) { finished = true; ws.close(); ws = null; }
     selectedFile = null;
     sessionId = null;

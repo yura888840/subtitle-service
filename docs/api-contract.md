@@ -14,6 +14,7 @@ quotas and the queue are in memory. Restarting loses that state.
 | GET | `/license/status` | `{ active, remaining, dailyLimit, tgContact }` |
 | POST | `/license` | JSON `{ key }`; 200 and license cookie, or 400 |
 | POST | `/upload` | Multipart `video`, `language`, `model`; 200 `{ jobId }` (also the session ID) |
+| GET | `/sessions/:sessionId` | No-store `{ sessionId, videoFile, srtFile }` for editor handoff; basenames only, 404 if expired |
 | GET | `/srt/:sessionId` | Current editable SRT; 404 if session expired or files disappeared |
 | POST | `/apply` | JSON `{ jobId: sessionId, srt }`; 200 `{ jobId: burnJobId }` |
 | GET | `/videos/:file` | Uploaded/processed source; HTTP Range supported |
