@@ -955,7 +955,13 @@ window.I18N = {
   }
 };
 
+// A localized landing page can select the studio language without relying on storage.
+let entryLang = new URLSearchParams(location.search).get('lang');
+if (entryLang === 'en' || entryLang === 'uk') {
+  try { localStorage.setItem('lang', entryLang); } catch { /* storage is optional */ }
+}
 window.getLang = function () {
+  if (entryLang === 'en' || entryLang === 'uk') return entryLang;
   try {
     var l = localStorage.getItem('lang');
     if (l === 'uk' || l === 'en') return l;
@@ -1015,6 +1021,7 @@ window.applyStaticI18n = function () {
 };
 
 window.setLang = function (lang) {
+  entryLang = lang;
   try { localStorage.setItem('lang', lang); } catch (e) {}
   window.applyStaticI18n();
   if (typeof window.__onLangChange === 'function') window.__onLangChange();

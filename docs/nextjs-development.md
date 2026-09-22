@@ -1,6 +1,6 @@
 # Next.js foundation (migration step 2)
 
-`web/` is an independent Next.js App Router + TypeScript application. Its small
+`web/` is an independent Next.js App Router + TypeScript application. Its public
 landing page links to `/studio`, which still serves the complete existing editor.
 The React upload/editor migration is deliberately deferred to later steps.
 
@@ -16,8 +16,9 @@ Open `http://localhost:8080`. This localhost-only port is the unified Nginx entr
 
 | URL | Service |
 | --- | --- |
-| `/`, `/_next/*`, `/api/health` | Next.js web |
-| `/studio`, `/index.html`, `/impressum.html`, `/datenschutz.html`, `/ceo.html` | Existing Express UI |
+| `/`, `/uk`, `/seo`, `/uk/seo`, `/impressum`, `/datenschutz`, `/_next/*`, `/api/health` | Next.js web |
+| `/studio` | Existing Express editor |
+| Legacy `.html` public URLs | Next.js permanent redirects |
 | `/upload`, `/apply`, `/options`, `/legal`, `/health`, `/license/*` | Express API |
 | `/ws?jobId=...` | Express WebSocket (upgrade + four-hour timeout) |
 | `/videos/*`, `/outputs/*`, `/srt/*` | Express media/SRT with Range support |
@@ -75,3 +76,35 @@ Before switching the HTTPS proxy, verify through the gateway: landing and assets
 legacy editor, options, license activation/cookie, a small upload, WebSocket
 status, video seeking (206 Range response), SRT/MP4 download and repeat rendering
 (after step 1 is merged). A first real Whisper run may download its model.
+
+## Public pages (step 3)
+
+Next.js serves `/` and `/uk` (English/Ukrainian home), `/seo` and `/uk/seo`
+(public subtitle guide), and German `/impressum` and `/datenschutz`.
+Shared layouts render the correct document language, navigation and footer.
+The complete upload/editor remains on `/studio` until steps 4–5.
+A validated `?lang=en|uk` preserves the selected language on entry to the editor;
+the editor's own language switch remains available.
+
+Old public URLs use permanent 308 redirects: `/index.html` → `/`,
+`/impressum.html` → `/impressum`, `/datenschutz.html` → `/datenschutz`, and
+both `/ceo.html` and `/seo.html` → `/seo`. The original CEO/internal brief is
+removed and replaced by factual public SEO content. The backend-only deployment
+retains its legal HTML pages and a new `public/seo.html`, with a compatibility
+redirect from `/ceo.html`.
+
+Runtime settings for web:
+
+- `MEDIA_API_URL`: internal backend origin; Compose sets `http://subtitle-service:3000`.
+  Local default is `http://127.0.0.1:3000`. Pages request only `/legal` and `/options`,
+  server-side, without caching, so operator details and limits are not frozen at build.
+- `SITE_URL`: real public origin, e.g. `https://your.domain.com`, set in root `.env`.
+  This supplies canonical/hreflang/Open Graph URLs and sitemap entries at runtime.
+  If unset, absolute canonical links and sitemap entries are omitted rather than
+  advertising a guessed domain. Recreate web after changing environment settings.
+
+`/robots.txt` and `/sitemap.xml` expose public pages and exclude media paths from
+crawling. Robots directives are not access controls. The new pages use system
+fonts; the legacy editor still loads Google Fonts. Existing German legal wording
+is migrated, not independently legally reviewed; operator placeholders continue
+to come from the backend configuration.

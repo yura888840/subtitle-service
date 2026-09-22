@@ -13,3 +13,31 @@ a:focus-visible { outline: 3px solid #ffdc87; outline-offset: 6px; }
 .steps span { margin-top: 12px; color: #bdc4ce; line-height: 1.6; }
 footer { display: flex; gap: 24px; padding-top: 40px; color: #bdc4ce; font-size: .9rem; }
 @media (max-width: 600px) { main { padding-top: 40px; } .steps { grid-template-columns: 1fr; } }
+.site-header, .site-footer { max-width: 960px; padding: 24px 28px; margin: auto; display: flex; justify-content: space-between; align-items: center; gap: 24px; }
+.site-header nav, .site-footer nav, .language-links { display: flex; flex-wrap: wrap; gap: 20px; }
+.brand { font-weight: 900; letter-spacing: -.05em; font-size: 1.35rem; text-decoration: none; }
+.brand span { color: #ffdc87; }
+.site-header nav { font-size: .85rem; }
+.site-footer { border-top: 1px solid #343943; color: #bdc4ce; font-size: .8rem; margin-top: 32px; }
+.skip-link { position: absolute; top: -100px; left: 16px; padding: 12px; background: #12151b; z-index: 10; }
+.skip-link:focus { top: 12px; }
+.language-links { margin: 20px 0; font-size: .9rem; }
+.language-links [aria-current] { color: #ffdc87; font-weight: 700; }
+.article, .conditions { max-width: 760px; line-height: 1.75; }
+h2 { font-size: 1.4rem; line-height: 1.3; margin-top: 36px; }
+.conditions { background: #1c2028; padding: 8px 24px 16px; border-radius: 8px; margin-top: 32px; }
+details { padding: 16px 0; border-bottom: 1px solid #343943; }
+summary { cursor: pointer; font-weight: 600; }
+.legal-doc { max-width: 800px; padding-top: 32px; line-height: 1.7; }
+.legal-doc h1 { font-size: clamp(2rem, 5vw, 3.3rem); overflow-wrap: anywhere; }
+.legal-doc .backlink { display: inline-block; margin-bottom: 24px; }
+.legal-doc .addr, .legal-doc .card-block { background: #1c2028; border-radius: 8px; padding: 20px; font-style: normal; overflow-wrap: anywhere; }
+.legal-doc .k { display: block; font-size: .8rem; color: #bdc4ce; margin-top: 12px; }
+.legal-doc [hidden] { display: none; }
+.legal-doc .toc { display: grid; gap: 8px; }
+.legal-doc .n { color: #ffdc87; margin-right: 8px; }
+.table-scroll { overflow-x: auto; }
+.legal-doc table { width: 100%; border-collapse: collapse; min-width: 420px; font-size: .9rem; }
+.legal-doc th, .legal-doc td { padding: 12px; border-bottom: 1px solid #343943; text-align: left; vertical-align: top; }
+.legal-doc .note-legal { border-left: 3px solid #ffdc87; padding: 16px; background: #1c2028; }
+@media (max-width: 600px) { .site-header, .site-footer { align-items: flex-start; flex-direction: column; } }

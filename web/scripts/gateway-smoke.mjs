@@ -52,11 +52,12 @@ try {
     PORT: String(mediaPort), HOST: '127.0.0.1', PATH: `${dir}:${process.env.PATH}`,
     UPLOAD_DIR: path.join(dir, 'uploads'), TRANSCRIBE_SCRIPT: path.join(dir, 'transcribe.sh'),
     BURN_SCRIPT: path.join(dir, 'burn.sh'), LICENSE_KEY: 'test-only-license',
+    LEGAL_NAME: 'Gateway Test Operator', LEGAL_EMAIL: 'operator@example.test', MAX_VIDEO_DURATION_SEC: '360', DAILY_LIMIT: '5',
   });
   const standalone = path.join(web, '.next/standalone');
   fs.cpSync(path.join(web, '.next/static'), path.join(standalone, '.next/static'), { recursive: true });
   fs.cpSync(path.join(web, 'public'), path.join(standalone, 'public'), { recursive: true });
-  run(process.execPath, ['server.js'], standalone, { PORT: String(webPort), HOSTNAME: '127.0.0.1' });
+  run(process.execPath, ['server.js'], standalone, { PORT: String(webPort), HOSTNAME: '127.0.0.1', MEDIA_API_URL: `http://127.0.0.1:${mediaPort}`, SITE_URL: 'https://subtitles.example.test' });
   for (const [port, url] of [[mediaPort, '/health'], [webPort, '/api/health']]) {
     await until(async () => { try { return (await fetch(`http://127.0.0.1:${port}${url}`)).ok; } catch { return false; } });
   }
@@ -71,13 +72,32 @@ try {
   await until(async () => { try { return (await request('/api/health')).ok; } catch { return false; } });
   assert.deepEqual(await (await request('/api/health')).json(), { status: 'ok', service: 'web' });
   const page = await (await request('/')).text();
-  assert.match(page, /Your video/);
+  assert.match(page, /Speak your language/);
   const asset = page.match(/(?:src|href)="([^" ]*\/_next\/[^" ]+)"/);
   assert.ok(asset, 'Next.js asset is present');
   assert.equal((await request(asset[1].replaceAll('&amp;', '&'))).status, 200);
-  for (const url of ['/studio', '/index.html', '/impressum.html', '/datenschutz.html', '/ceo.html']) {
+  for (const url of ['/studio', '/uk', '/seo', '/uk/seo', '/impressum', '/datenschutz']) {
     assert.equal((await request(url)).status, 200, url);
   }
+  for (const [oldPath, newPath] of [['/index.html', '/'], ['/impressum.html', '/impressum'], ['/datenschutz.html', '/datenschutz'], ['/ceo.html', '/seo'], ['/seo.html', '/seo']]) {
+    const redirect = await request(oldPath, { redirect: 'manual' });
+    assert.equal(redirect.status, 308, oldPath);
+    assert.equal(new URL(redirect.headers.get('location'), base).pathname, newPath);
+  }
+  const seo = await (await request('/seo')).text();
+  assert.match(seo, /name="robots" content="index, follow"/);
+  assert.match(seo, /https:\/\/subtitles.example.test\/seo/);
+  assert.doesNotMatch(seo, /Executive Brief|COGS/);
+  const uk = await (await request('/uk/seo')).text();
+  assert.match(uk, /<html lang="uk"/);
+  const legalPage = await (await request('/impressum')).text();
+  assert.match(legalPage, /<html lang="de"/);
+  assert.match(legalPage, /Gateway Test Operator/);
+  assert.match(legalPage, /operator@example.test/);
+  const sitemap = await (await request('/sitemap.xml')).text();
+  assert.match(sitemap, /https:\/\/subtitles.example.test\/uk\/seo/);
+  assert.doesNotMatch(sitemap, /ceo|localhost|studio/);
+  assert.equal((await request('/robots.txt')).status, 200);
   const options = await (await request('/options')).json();
   assert.ok(options.models.includes('medium'));
   assert.equal((await request('/legal')).status, 200);

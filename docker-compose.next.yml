@@ -2,6 +2,9 @@
 services:
   web:
     build: ./web
+    environment:
+      MEDIA_API_URL: http://subtitle-service:3000
+      SITE_URL: ${SITE_URL:-}
     restart: unless-stopped
     init: true
     # Nginx is the public entry point; no host port or media volumes here.
