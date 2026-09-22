@@ -300,6 +300,18 @@ app.post('/apply', (req, res) => {
   res.json({ jobId: burnJobId });
 });
 
+// Editor handoff: expose basenames only, after verifying the session still exists.
+app.get('/sessions/:sessionId', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const session = sessions.getSession(String(req.params.sessionId));
+  if (!session) return res.status(404).json({ error: 'Session not found or expired. Please upload the video again.' });
+  res.json({
+    sessionId: req.params.sessionId,
+    videoFile: path.basename(session.videoPath),
+    srtFile: path.basename(session.srtPath)
+  });
+});
+
 // Fetch current subtitles for a session (used when re-opening the editor)
 app.get('/srt/:sessionId', (req, res) => {
   const session = sessions.getSession(String(req.params.sessionId));

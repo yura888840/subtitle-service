@@ -1,8 +1,8 @@
 # Next.js foundation (migration step 2)
 
 `web/` is an independent Next.js App Router + TypeScript application. Its public
-landing page links to `/studio`, which still serves the complete existing editor.
-The React upload/editor migration is deliberately deferred to later steps.
+landing page links to `/studio`, which serves the React upload form.
+The upload form now uses React; migrating the editor is step 5.
 
 ## Run the Docker stack
 
@@ -17,9 +17,10 @@ Open `http://localhost:8080`. This localhost-only port is the unified Nginx entr
 | URL | Service |
 | --- | --- |
 | `/`, `/uk`, `/seo`, `/uk/seo`, `/impressum`, `/datenschutz`, `/_next/*`, `/api/health` | Next.js web |
-| `/studio` | Existing Express editor |
+| `/studio`, `/uk/studio` | React upload form |
+| `/editor?sessionId=...` | Existing Express editor, after transcription |
 | Legacy `.html` public URLs | Next.js permanent redirects |
-| `/upload`, `/apply`, `/options`, `/legal`, `/health`, `/license/*` | Express API |
+| `/upload`, `/apply`, `/options`, `/legal`, `/health`, `/license/*`, `/sessions/*` | Express API |
 | `/ws?jobId=...` | Express WebSocket (upgrade + four-hour timeout) |
 | `/videos/*`, `/outputs/*`, `/srt/*` | Express media/SRT with Range support |
 
@@ -82,7 +83,7 @@ status, video seeking (206 Range response), SRT/MP4 download and repeat renderin
 Next.js serves `/` and `/uk` (English/Ukrainian home), `/seo` and `/uk/seo`
 (public subtitle guide), and German `/impressum` and `/datenschutz`.
 Shared layouts render the correct document language, navigation and footer.
-The complete upload/editor remains on `/studio` until steps 4–5.
+The React upload form is on `/studio` and `/uk/studio`; the existing editor remains on `/editor` until step 5.
 A validated `?lang=en|uk` preserves the selected language on entry to the editor;
 the editor's own language switch remains available.
 
@@ -105,6 +106,35 @@ Runtime settings for web:
 
 `/robots.txt` and `/sitemap.xml` expose public pages and exclude media paths from
 crawling. Robots directives are not access controls. The new pages use system
-fonts; the legacy editor still loads Google Fonts. Existing German legal wording
+fonts; the legacy editor at `/editor` still loads Google Fonts. Existing German legal wording
 is migrated, not independently legally reviewed; operator placeholders continue
 to come from the backend configuration.
+
+
+## React upload (step 4)
+
+`/studio` (EN) and `/uk/studio` (UK) fetch `/options` and `/license/status` on the
+client. `/studio?lang=uk` redirects for compatibility with old landing links.
+The form supports file selection/drop, configured extension/size limits,
+source-language/model preference cookies, license activation, upload progress,
+queue position, compression/transcription status and actionable errors.
+Duration and media validation remain authoritative on the backend.
+
+Uploads use XMLHttpRequest/FormData directly through Nginx to Express; no video
+is copied into a Next.js request body. WebSocket connections are opened only
+from the user-triggered upload flow, and are closed on component unmount.
+The existing disconnect-cancels-job behavior remains: no automatic reconnection
+or persistent recovery is promised by this step.
+
+On `transcribed`, the browser navigates to `/editor?sessionId=...&lang=...`.
+The existing editor loads `/sessions/:sessionId` (no-store) for server-resolved
+file basenames, then uses `/srt/:sessionId`. It never re-uploads the video and
+reports a missing/expired session. Reset from this editor returns to React.
+The backend-only legacy `/` continues working with its existing upload UI.
+
+CI installs Chromium and runs Playwright against the real Nginx/Next/Express
+stack in `scripts/gateway-smoke.mjs`. Browser checks cover client validation,
+license activation, saved preferences, progress and single submission, queue
+stages, HTTP/network/WS errors, unmount cleanup, Ukrainian UI, mobile overflow,
+and upload → legacy editor → edit → render → download with stub media commands.
+The root tests also verify the session handoff response and expired-session 404.

@@ -66,7 +66,7 @@ try {
     const home = await get('/');
     assert.match(home, /99 MB/);
     assert.match(home, /6 minutes/);
-    assert.match(home, /\/studio\?lang=en/);
+    assert.match(home, /href="\/studio"/);
     dailyLimit = 8;
     assert.match(await get('/'), /8 free translations/); // Runtime config, no build-time snapshot.
     const legal = await get('/impressum');

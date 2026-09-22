@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 export default function robots(): MetadataRoute.Robots {
   const origin = siteOrigin();
   return {
-    rules: { userAgent: '*', allow: '/', disallow: ['/studio', '/videos/', '/outputs/', '/srt/', '/api/', '/health', '/license', '/upload', '/apply', '/ws'] },
+    rules: { userAgent: '*', allow: '/', disallow: ['/studio', '/uk/studio', '/editor', '/sessions/', '/videos/', '/outputs/', '/srt/', '/api/', '/health', '/license', '/upload', '/apply', '/ws'] },
     ...(origin ? { sitemap: `${origin}/sitemap.xml` } : {}),
   };
 }

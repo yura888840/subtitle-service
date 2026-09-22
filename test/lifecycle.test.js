@@ -99,6 +99,10 @@ test('upload → edit → render → download SRT/video → edit and render agai
   const h = await start(t);
   h.write('release', '');
   const s = await h.session();
+  const handoff = await h.request(`/sessions/${s.id}`);
+  assert.equal(handoff.headers.get('cache-control'), 'no-store');
+  assert.deepEqual(await handoff.json(), { sessionId: s.id, videoFile: s.videoFile, srtFile: s.srtFile });
+  assert.equal((await h.request('/sessions/expired')).status, 404);
   const first = await h.apply(s.id);
   const firstDone = await h.connect((await first.json()).jobId).wait('done');
   assert.equal(await (await h.request(`/outputs/${firstDone.outputFile}`)).text(), SRT);
