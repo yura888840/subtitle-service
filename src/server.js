@@ -95,6 +95,8 @@ app.disable('x-powered-by');
 app.set('trust proxy', true);
 app.use(express.json({ limit: `${cfg.MAX_SRT_SIZE_KB}kb` }));
 
+// Compatibility for the backend-only deployment; the Next gateway redirects to /seo.
+app.get('/ceo.html', (_req, res) => res.redirect(308, '/seo.html'));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // Original videos for the player. express.static supports HTTP Range —

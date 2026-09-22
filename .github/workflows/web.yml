@@ -23,6 +23,8 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run build
+      - name: Test server-rendered pages and SEO
+        run: node scripts/pages-smoke.mjs
       - name: Install gateway smoke dependencies
         working-directory: .
         run: |
