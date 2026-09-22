@@ -192,8 +192,8 @@ export function UploadStudio({ lang }: { lang: 'en' | 'uk' }) {
             <p className="file-summary">{file ? `${file.name} · ${(file.size / 1048576).toFixed(1)} MB` : options.allowedExtensions.join(', ')}</p>
           </div>
           <div className="upload-fields">
-            <label>{c.language}<select value={language} onChange={event => { setLanguage(event.target.value); savePreference('pref_language', event.target.value); }}>{options.languages.map(item => <option key={item.value} value={item.value}>{item.label} ({item.code})</option>)}</select></label>
-            <label>{c.model}<select value={model} onChange={event => { setModel(event.target.value); savePreference('pref_model', event.target.value); }}>{options.models.map(item => <option key={item}>{item}</option>)}</select></label>
+            <div><label htmlFor="source-language">{c.language}</label><select id="source-language" value={language} onChange={event => { setLanguage(event.target.value); savePreference('pref_language', event.target.value); }}>{options.languages.map(item => <option key={item.value} value={item.value}>{item.label} ({item.code})</option>)}</select></div>
+            <div><label htmlFor="whisper-model">{c.model}</label><select id="whisper-model" value={model} onChange={event => { setModel(event.target.value); savePreference('pref_model', event.target.value); }}>{options.models.map(item => <option key={item}>{item}</option>)}</select></div>
           </div>
           <p>{c.source}</p><p className="hint">{c.modelHint}</p>
           <button className="button" type="submit" disabled={!file || busy}>{c.upload}</button>

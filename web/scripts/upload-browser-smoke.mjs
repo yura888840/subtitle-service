@@ -30,11 +30,12 @@ export async function testUploadBrowser(base) {
     await expect(submit(page)).toBeDisabled();
     await expect(page.getByLabel('Whisper model', { exact: true })).toBeVisible();
     await page.getByLabel('Video file', { exact: true }).setInputFiles({ ...file, name: 'wrong.txt' });
-    await expect(page.getByRole('alert')).toContainText('allowed format');
+    await expect(page.locator('main').getByRole('alert')).toContainText('allowed format');
     await expect(submit(page)).toBeDisabled();
+    await choose(page);
     await page.getByLabel('License key', { exact: true }).fill('invalid');
     await page.getByRole('button', { name: 'Activate', exact: true }).click();
-    await expect(page.getByRole('alert')).toContainText('Invalid license key');
+    await expect(page.locator('main').getByRole('alert')).toContainText('Invalid license key');
     await page.getByLabel('License key', { exact: true }).fill('test-only-license');
     await page.getByRole('button', { name: 'Activate', exact: true }).click();
     await expect(page.getByText('License active — unlimited translations', { exact: true })).toBeVisible();
@@ -74,8 +75,8 @@ export async function testUploadBrowser(base) {
     let attempts = 0;
     await unavailable.route('**/options', route => ++attempts === 1 ? route.fulfill({ status: 503, json: {} }) : route.continue());
     await unavailable.goto(`${base}/studio`);
-    await expect(unavailable.getByRole('alert')).toContainText('Could not load upload options');
-    await unavailable.getByRole('alert').getByRole('button', { name: 'Retry' }).click();
+    await expect(unavailable.locator('main').getByRole('alert')).toContainText('Could not load upload options');
+    await unavailable.locator('main').getByRole('alert').getByRole('button', { name: 'Retry' }).click();
     await choose(unavailable);
 
     const oversized = await newPage();
@@ -84,21 +85,21 @@ export async function testUploadBrowser(base) {
     await oversized.goto(`${base}/studio`);
     await expect(oversized.getByLabel('Video file', { exact: true })).toBeVisible();
     await oversized.getByLabel('Video file', { exact: true }).setInputFiles({ ...file, buffer: Buffer.alloc(1024 * 1024 + 1) });
-    await expect(oversized.getByRole('alert')).toContainText('exceeds the size limit');
+    await expect(oversized.locator('main').getByRole('alert')).toContainText('exceeds the size limit');
     await expect(submit(oversized)).toBeDisabled();
 
     for (const [status, error, visible] of [[429, 'quota', 'Daily limit reached'], [413, 'size', 'exceeds the size limit'], [400, 'Video is too long', 'Video is too long'], [500, 'Upload unavailable', 'Upload unavailable']]) {
       const failure = await newPage();
       await failure.route('**/upload', route => route.fulfill({ status, json: { error } }));
       await failure.goto(`${base}/studio`); await choose(failure); await submit(failure).click();
-      await expect(failure.getByRole('alert')).toContainText(visible);
+      await expect(failure.locator('main').getByRole('alert')).toContainText(visible);
       await expect(submit(failure)).toBeEnabled();
     }
 
     const network = await newPage();
     await network.route('**/upload', route => route.abort());
     await network.goto(`${base}/studio`); await choose(network); await submit(network).click();
-    await expect(network.getByRole('alert')).toContainText('Connection lost');
+    await expect(network.locator('main').getByRole('alert')).toContainText('Connection lost');
 
     const stream = await newPage();
     let socket;
@@ -112,14 +113,14 @@ export async function testUploadBrowser(base) {
     socket.send(JSON.stringify({ status: 'processing', stage: 'transcribe' }));
     await expect(stream.getByRole('status')).toContainText('Generating English subtitles');
     await socket.close({ code: 1011, reason: 'test disconnect' });
-    await expect(stream.getByRole('alert')).toContainText('Connection to the worker was lost');
+    await expect(stream.locator('main').getByRole('alert')).toContainText('Connection to the worker was lost');
     await expect(submit(stream)).toBeEnabled();
 
     const processingError = await newPage();
     await processingError.route('**/upload', route => route.fulfill({ json: { jobId } }));
     await processingError.routeWebSocket('**/ws?**', ws => ws.send(JSON.stringify({ status: 'error', message: 'Transcription failed' })));
     await processingError.goto(`${base}/studio`); await choose(processingError); await submit(processingError).click();
-    await expect(processingError.getByRole('alert')).toContainText('Transcription failed');
+    await expect(processingError.locator('main').getByRole('alert')).toContainText('Transcription failed');
 
     const progress = await newPage();
     let release;
@@ -132,7 +133,7 @@ export async function testUploadBrowser(base) {
     await progress.locator('form[aria-label="Upload and generate subtitles"]').evaluate(form => form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
     assert.equal(uploadCount, 1);
     release();
-    await expect(progress.getByRole('alert')).toContainText('test complete');
+    await expect(progress.locator('main').getByRole('alert')).toContainText('test complete');
 
     const leaving = await newPage();
     let closed = false;
