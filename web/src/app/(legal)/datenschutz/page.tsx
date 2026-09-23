@@ -21,7 +21,7 @@ export default async function Page() {
     <a href="#s4"><span className="n">4</span>Server-Logs &amp; IP-Adresse</a>
     <a href="#s5"><span className="n">5</span>Cookies &amp; lokale Speicherung</a>
     <a href="#s6"><span className="n">6</span>Lizenzschlüssel</a>
-    <a href="#s7"><span className="n">7</span>Google Fonts</a>
+    <a href="#s7"><span className="n">7</span>Schriftarten</a>
     <a href="#s8"><span className="n">8</span>Speicherdauer</a>
     <a href="#s9"><span className="n">9</span>Empfänger / Auftragsverarbeiter</a>
     <a href="#s10"><span className="n">10</span>Ihre Rechte</a>
@@ -112,22 +112,8 @@ export default async function Page() {
     Identifizierung Ihrer Person erfolgt hierdurch nicht. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO.
   </p>
 
-  <p>Die neuen Informationsseiten verwenden Systemschriftarten und rufen keine Google Fonts ab.</p>
-  <h2 id="s7"><span className="n">07</span> Google Fonts</h2>
-  <p>
-    Der bisherige Video-Editor unter /editor nutzt zur einheitlichen Darstellung von Schriftarten sogenannte Web Fonts, die von
-    Google bereitgestellt werden. Beim Aufruf dieses Editors lädt Ihr Browser die benötigten Schriftarten,
-    um Texte korrekt anzuzeigen. Dabei wird eine Verbindung zu Servern von Google (Google Ireland
-    Limited, Gordon House, Barrow Street, Dublin 4, Irland) aufgebaut, wodurch Google Kenntnis von Ihrer
-    IP-Adresse erlangt. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an einer
-    einheitlichen Darstellung).
-  </p>
-  <div className="note-legal">
-    <strong>Hinweis zur datenschutzfreundlichen Alternative:</strong> Google Fonts können auch lokal auf
-    dem eigenen Server eingebunden werden (Self-Hosting), sodass keine Verbindung zu Google aufgebaut
-    wird. Sofern Sie diese Website betreiben, empfehlen wir aus Datenschutzgründen das Self-Hosting der
-    Schriftarten; in diesem Fall kann dieser Abschnitt entfernt werden.
-  </div>
+  <h2 id="s7"><span className="n">07</span> Schriftarten</h2>
+  <p>Diese Website einschließlich Upload und Video-Editor verwendet Systemschriftarten. Es werden keine Schriftarten von Google Fonts abgerufen.</p>
 
   <h2 id="s8"><span className="n">08</span> Speicherdauer</h2>
   <ul>
@@ -140,7 +126,7 @@ export default async function Page() {
   <h2 id="s9"><span className="n">09</span> Empfänger &amp; Auftragsverarbeiter</h2>
   <p>
     Die Verarbeitung erfolgt auf unserem eigenen Server. Eine Übermittlung Ihrer Daten an Dritte findet
-    nicht statt, mit Ausnahme des in Abschnitt 7 beschriebenen Abrufs von Google Fonts. Sofern der Server
+    nicht statt. Sofern der Server
     bei einem Hosting-Dienstleister betrieben wird, erfolgt dies auf Grundlage eines Vertrags zur
     Auftragsverarbeitung gemäß Art. 28 DSGVO.
   </p>
