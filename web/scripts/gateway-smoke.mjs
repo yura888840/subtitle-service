@@ -104,6 +104,8 @@ try {
   const options = await (await request('/options')).json();
   assert.ok(options.models.includes('medium'));
   assert.equal((await request('/legal')).status, 200);
+  // The host TLS proxy's client identity must survive the inner gateway.
+  assert.equal((await (await request('/license/status', { headers: { 'X-Real-IP': '198.51.100.12' } })).json()).remaining, 5);
   const license = await request('/license', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: 'test-only-license' }),
   });

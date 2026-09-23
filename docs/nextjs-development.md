@@ -241,3 +241,9 @@ The PostgreSQL integration test starts actual Next.js, media and two worker
 processes, kills/restarts web and media during a render, checks one active heavy
 job, worker crash recovery and immutable version/output downloads. Existing
 backend-only and browser gateway suites remain regression gates.
+
+The inner gateway trusts X-Real-IP only from loopback and the default Docker
+172.16.0.0/12 range. The host TLS proxy must overwrite this header (as in the
+provided host config). Adjust the trusted subnet for custom networks. This keeps
+upload quota claims and Next.js quota display keyed to the same client, rather
+than to the host proxy address. Never expose the internal gateway on a public bind.
