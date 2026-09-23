@@ -9,11 +9,13 @@ import threading
 child = subprocess.Popen(['bash', *sys.argv[1:]], start_new_session=True)
 
 def watch_owner():
-    sys.stdin.buffer.read()
+    while os.read(0, 1024):
+        pass
     try:
         os.killpg(child.pid, signal.SIGKILL)
     except ProcessLookupError:
         pass
 
 threading.Thread(target=watch_owner, daemon=True).start()
-sys.exit(child.wait())
+code = child.wait()
+os._exit(code if code >= 0 else 128 - code)
