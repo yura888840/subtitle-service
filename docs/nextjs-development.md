@@ -201,3 +201,43 @@ queued/running inputs, and deletes expired metadata before orphan files.
 CI uses a real PostgreSQL service to test concurrent quota claims, two competing
 workers, abrupt process restart, persisted sessions, duplicate renders, explicit
 cancellation and retry. Browser checks cover refresh/recovered results.
+
+## Separate API and worker (step 7)
+
+Deploy the same Compose command; it now starts `web`, the upload/media service,
+`worker`, PostgreSQL and Nginx. Restarting web or the upload service never owns or
+interrupts a worker job. The worker alone runs scripts and retention cleanup,
+using the shared database lock to serialize all compression/transcription/burns.
+A standby worker cannot process concurrently. Restarting the worker still marks
+interrupted processing as failed, as in step 6.
+
+Next.js Node Route Handlers own `/options`, `/legal`, `/license`, `/license/status`,
+`/sessions/*`, `/jobs/*`, `/apply`, `/srt/*` and the database readiness `/health`.
+They call the shared domain/store directly, not the media HTTP API. Bodies are
+streamed with a size bound. Nginx sets the trusted client IP; do not expose the
+web container directly to untrusted traffic. The media service handles multipart
+`/upload` (including probing), files/Range and optional WS observers. No full video
+passes through Next.js. `/api/health` is the web process liveness endpoint.
+Without DATABASE_URL only, handlers proxy ordinary operations to the original
+backend for compatibility. The durable media process refuses those operations.
+
+Build the web image from the repository root:
+`docker build -f web/Dockerfile -t subtitle-web .`.
+Standalone output is now `.next/standalone/web/server.js`, with traced shared
+modules above it. No media volume is mounted into Next.js: it stores SRT in the
+DB and constructs file paths for the worker using the same UPLOAD_DIR.
+
+Transcription creates SRT version 1. Each accepted apply transaction creates a
+new immutable SRT version, linked to its queued render. Rejected duplicate applies
+create no version. Output names contain the unique render ID; subsequent renders
+do not overwrite prior results. `/sessions/:id/versions` lists versions/renders;
+`/sessions/:id/versions/:version` downloads an immutable SRT. The editor exposes
+history and completed downloads. Failed/cancelled renders retain their SRT version.
+Retention removes the entire expired session history and its files. On upgrade
+from step 6, only the current SRT can be backfilled as version 1; historical edits
+from before versioning cannot be reconstructed.
+
+The PostgreSQL integration test starts actual Next.js, media and two worker
+processes, kills/restarts web and media during a render, checks one active heavy
+job, worker crash recovery and immutable version/output downloads. Existing
+backend-only and browser gateway suites remain regression gates.

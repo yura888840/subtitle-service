@@ -19,6 +19,9 @@ jobs:
           node-version: '22'
           cache: npm
           cache-dependency-path: web/package-lock.json
+      - name: Install shared API dependencies
+        working-directory: .
+        run: npm ci
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
@@ -38,7 +41,8 @@ jobs:
       - name: Test actual Nginx media routing
         run: node scripts/gateway-smoke.mjs
       - name: Build standalone web image
-        run: docker build -t subtitle-web:test .
+        run: docker build -f web/Dockerfile -t subtitle-web:test .
+        working-directory: .
       - name: Check Compose configuration
         working-directory: .
         run: |

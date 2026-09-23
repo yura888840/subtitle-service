@@ -9,7 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const web = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const standalone = path.join(web, '.next/standalone');
+const standalone = path.join(web, '.next/standalone/web');
 fs.cpSync(path.join(web, '.next/static'), path.join(standalone, '.next/static'), { recursive: true });
 fs.cpSync(path.join(web, 'public'), path.join(standalone, 'public'), { recursive: true });
 let dailyLimit = 5;

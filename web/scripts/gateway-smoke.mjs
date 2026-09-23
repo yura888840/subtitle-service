@@ -57,7 +57,7 @@ try {
     BURN_SCRIPT: path.join(dir, 'burn.sh'), LICENSE_KEY: 'test-only-license',
     LEGAL_NAME: 'Gateway Test Operator', LEGAL_EMAIL: 'operator@example.test', MAX_VIDEO_DURATION_SEC: '360', DAILY_LIMIT: '5',
   });
-  const standalone = path.join(web, '.next/standalone');
+  const standalone = path.join(web, '.next/standalone/web');
   fs.cpSync(path.join(web, '.next/static'), path.join(standalone, '.next/static'), { recursive: true });
   fs.cpSync(path.join(web, 'public'), path.join(standalone, 'public'), { recursive: true });
   run(process.execPath, ['server.js'], standalone, { PORT: String(webPort), HOSTNAME: '127.0.0.1', MEDIA_API_URL: `http://127.0.0.1:${mediaPort}`, SITE_URL: 'https://subtitles.example.test' });
