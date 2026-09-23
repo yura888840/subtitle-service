@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { VersionHistory } from './version-history';
 import { PersistentJob } from './persistent-job';
 import { useEffect, useRef, useState } from 'react';
 import { editorCopy } from '@/lib/editor-copy';
@@ -13,6 +14,7 @@ const basename = (value: unknown): value is string => typeof value === 'string' 
 export function SubtitleEditor({ sessionId, lang }: { sessionId: string; lang: 'en' | 'uk' }) {
   const c = editorCopy[lang];
   const [durable, setDurable] = useState(false);
+  const [versioned, setVersioned] = useState(false);
   const [renderJob, setRenderJob] = useState('');
   const [cues, setCues] = useState<Cue[]>([]);
   const [video, setVideo] = useState('');
@@ -47,7 +49,7 @@ export function SubtitleEditor({ sessionId, lang }: { sessionId: string; lang: '
         if (!subtitles.ok) throw new Error('Subtitles unavailable');
         const parsed = parseSrt(await subtitles.text());
         if (controller.signal.aborted) return;
-        setDurable(!!data.durable);
+        setDurable(!!data.durable); setVersioned(!!data.versioned);
         if (data.renderJobId) { setRenderJob(data.renderJobId); running.current = true; }
         setCues(parsed); setVideo(data.videoFile); setLoadError(false);
       } catch { if (!controller.signal.aborted) setLoadError(true); }
@@ -142,6 +144,7 @@ export function SubtitleEditor({ sessionId, lang }: { sessionId: string; lang: '
       }} />}
       {!renderJob && status.kind !== 'idle' && <section className="upload-status" role={status.kind === 'error' ? 'alert' : 'status'}>{status.kind === 'error' ? status.message : status.kind === 'queued' ? `${c.queued}: ${status.position}` : c[status.kind]}</section>}
       <p className="hint">{durable ? (lang === 'uk' ? 'Обробка продовжується після закриття сторінки.' : 'Rendering continues after closing the page.') : c.keepOpen}</p>
+      {versioned && <VersionHistory sessionId={sessionId} refresh={output} lang={lang} />}
       {output && support && <p>{c.support}: <a href={support.url} target="_blank" rel="noopener noreferrer">{support.name}</a></p>}
     </section>}
     <Link id="resetBtn" href={lang === 'uk' ? '/uk/studio' : '/studio'}>{c.reset}</Link>

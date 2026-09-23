@@ -21,6 +21,11 @@ async function dispatch(method, pathname, { body = {}, ip = '', cookie = '' } = 
     result = { ok: true, ttlDays: cfg.LICENSE_TTL_DAYS };
   } else if (method === 'POST' && pathname === '/apply') {
     result = await store.apply(String(body.jobId || ''), body.srt);
+  } else if (method === 'GET' && /^\/sessions\/[^/]+\/versions$/.test(pathname)) {
+    result = await store.versions(pathname.split('/')[2]);
+  } else if (method === 'GET' && /^\/sessions\/[^/]+\/versions\/[^/]+$/.test(pathname)) {
+    result = await store.versionSrt(pathname.split('/')[2], pathname.split('/')[4]);
+    headers['Content-Type'] = 'application/x-subrip; charset=utf-8';
   } else if (method === 'GET' && /^\/sessions\/[^/]+$/.test(pathname)) {
     result = await store.sessionView(pathname.split('/')[2]);
   } else if (method === 'GET' && /^\/srt\/[^/]+$/.test(pathname)) {

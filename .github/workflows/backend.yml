@@ -28,6 +28,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - name: Build Next.js API for split-process integration
+        run: npm ci --prefix web && npm run build --prefix web
       - name: Test durable lifecycle against PostgreSQL
         run: node --test test/durable.integration.js
         env:

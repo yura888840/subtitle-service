@@ -27,7 +27,14 @@ async function migrate() {
       WHERE stage='burn' AND status IN ('queued','processing');
     CREATE INDEX IF NOT EXISTS subtitle_queue ON subtitle_jobs(created_at,id) WHERE status='queued';
     CREATE TABLE IF NOT EXISTS subtitle_quotas (
-      subject text NOT NULL, day date NOT NULL, used integer NOT NULL, PRIMARY KEY(subject,day));`);
+      subject text NOT NULL, day date NOT NULL, used integer NOT NULL, PRIMARY KEY(subject,day));
+    CREATE TABLE IF NOT EXISTS subtitle_versions (
+      session_id uuid NOT NULL REFERENCES subtitle_sessions(id) ON DELETE CASCADE,
+      version integer NOT NULL, srt text NOT NULL, created_at timestamptz NOT NULL DEFAULT now(),
+      PRIMARY KEY(session_id,version));
+    ALTER TABLE subtitle_jobs ADD COLUMN IF NOT EXISTS srt_version integer;
+    INSERT INTO subtitle_versions(session_id,version,srt)
+      SELECT id,1,srt FROM subtitle_sessions WHERE srt IS NOT NULL ON CONFLICT DO NOTHING;`);
   });
 }
 function subject(ip) { return crypto.createHash('sha256').update(ip || '').digest('hex'); }
@@ -64,12 +71,15 @@ async function apply(id, srt) {
     if (!s.srt_path) throw fail(409, 'Transcription is not ready.');
     const { rowCount } = await c.query("SELECT id FROM subtitle_jobs WHERE session_id=$1 AND stage='burn' AND status IN ('queued','processing')", [id]);
     if (rowCount) throw fail(409, 'This session already has a queued or running render.');
+    const versions = await c.query('SELECT COALESCE(max(version),0)+1 AS next FROM subtitle_versions WHERE session_id=$1', [id]);
+    const version = versions.rows[0].next;
+    await c.query('INSERT INTO subtitle_versions(session_id,version,srt) VALUES($1,$2,$3)', [id, version, srt]);
     const jobId = crypto.randomUUID();
     const path = require('path');
-    const payload = { jobId, sessionId: id, stage: 'burn', videoPath: s.video_path, srtPath: path.join(cfg.OUTPUT_DIR, `${jobId}.srt`), srt, outputPath: path.join(cfg.OUTPUT_DIR, `${jobId}.mp4`) };
+    const payload = { jobId, sessionId: id, version, stage: 'burn', videoPath: s.video_path, srtPath: path.join(cfg.OUTPUT_DIR, `${jobId}.srt`), srt, outputPath: path.join(cfg.OUTPUT_DIR, `${jobId}.mp4`) };
     await c.query('UPDATE subtitle_sessions SET srt=$2 WHERE id=$1', [id, srt]);
-    await c.query("INSERT INTO subtitle_jobs(id,session_id,stage,status,payload) VALUES($1,$2,'burn','queued',$3)", [jobId, id, payload]);
-    return { jobId, durable: true };
+    await c.query("INSERT INTO subtitle_jobs(id,session_id,stage,status,payload,srt_version) VALUES($1,$2,'burn','queued',$3,$4)", [jobId, id, payload, version]);
+    return { jobId, durable: true, version };
   });
 }
 async function getJob(id) {
@@ -97,6 +107,22 @@ async function sessionView(id) {
   const s = await session(id);
   if (!s.srt_path) throw fail(409, 'Transcription is not ready.');
   const { rows } = await pool.query("SELECT id FROM subtitle_jobs WHERE session_id=$1 AND stage='burn' ORDER BY created_at DESC,id DESC LIMIT 1", [id]);
-  return { sessionId: id, videoFile: require('path').basename(s.video_path), srtFile: require('path').basename(s.srt_path), durable: true, renderJobId: rows[0]?.id || null };
+  return { sessionId: id, videoFile: require('path').basename(s.video_path), srtFile: require('path').basename(s.srt_path), durable: true, versioned: true, renderJobId: rows[0]?.id || null };
 }
-module.exports = { pool, migrate, transaction, remaining, accept, session, sessionView, apply, getJob, cancel, fail };
+async function versions(id) {
+  await session(id);
+  const { rows } = await pool.query(`SELECT v.version,v.created_at,
+    COALESCE(jsonb_agg(jsonb_build_object('jobId',j.id,'status',j.status,'outputFile',j.result->>'outputFile') ORDER BY j.created_at)
+    FILTER(WHERE j.id IS NOT NULL),'[]'::jsonb) AS renders
+    FROM subtitle_versions v LEFT JOIN subtitle_jobs j ON j.session_id=v.session_id AND j.srt_version=v.version
+    WHERE v.session_id=$1 GROUP BY v.version,v.created_at ORDER BY v.version DESC`, [id]);
+  return rows;
+}
+async function versionSrt(id, version) {
+  await session(id);
+  if (!/^\d+$/.test(String(version)) || Number(version) > 2147483647) throw fail(404, 'Version not found.');
+  const { rows } = await pool.query('SELECT srt FROM subtitle_versions WHERE session_id=$1 AND version=$2', [id, version]);
+  if (!rows[0]) throw fail(404, 'Version not found.');
+  return rows[0].srt;
+}
+module.exports = { versions, versionSrt, pool, migrate, transaction, remaining, accept, session, sessionView, apply, getJob, cancel, fail };

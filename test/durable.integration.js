@@ -18,17 +18,17 @@ test('durable quota, reconnect, restart, cancellation and worker exclusion', { t
   write('transcribe.sh', '#!/bin/bash\nwhile [ ! -f "$UPLOAD_DIR/release" ]; do sleep .05; done\nprintf "1\\n00:00:00,000 --> 00:00:01,000\\nHello\\n" > "$2"\n');
   write('burn.sh', '#!/bin/bash\nwhile [ ! -f "$UPLOAD_DIR/release-burn" ]; do sleep .05; done\ncp "$2" "$3"\n');
   const db = new Pool({ connectionString: process.env.DATABASE_URL });
-  let server, other; let logs = '';
+  let server, other, worker, web; let logs = '';
   const env = { ...process.env, PORT: '39117', HOST: '127.0.0.1', UPLOAD_DIR: dir, PATH: `${dir}:${process.env.PATH}`, TRANSCRIBE_SCRIPT: path.join(dir, 'transcribe.sh'), BURN_SCRIPT: path.join(dir, 'burn.sh'), DAILY_LIMIT: '1', LICENSE_KEY: 'test-key' };
-  const start = (port = '39117') => { const child = spawn(process.execPath, ['src/server.js'], { cwd: root, env: { ...env, PORT: port }, stdio: ['ignore', 'pipe', 'pipe'] }); child.stdout.on('data', b => { logs += b; }); child.stderr.on('data', b => { logs += b; }); return child; };
+  const start = (role = 'media') => { const child = spawn(process.execPath, [role === 'worker' ? 'src/durable/worker-main.js' : role === 'web' ? 'web/.next/standalone/web/server.js' : 'src/server.js'], { cwd: root, env: { ...env, PORT: role === 'web' ? '39119' : '39117', HOSTNAME: '127.0.0.1' }, stdio: ['ignore', 'pipe', 'pipe'] }); child.stdout.on('data', b => { logs += b; }); child.stderr.on('data', b => { logs += b; }); return child; };
   const stop = async child => { if (child && child.exitCode === null) { child.kill('SIGTERM'); await once(child, 'exit'); } };
-  const request = (url, init) => fetch(`http://127.0.0.1:39117${url}`, init);
+  const request = (url, init) => fetch(`http://127.0.0.1:${url === '/upload' || url.startsWith('/outputs/') ? '39117' : '39119'}${url}`, { ...init, headers: { 'X-Real-IP': '127.0.0.1', ...init?.headers } });
   const job = async id => (await request(`/jobs/${id}`)).json();
   const wait = (id, status) => until(async () => { const value = await job(id); return value.status === status && value; });
   const upload = async (licensed = false) => { const form = new FormData(); form.set('video', new Blob(['fixture']), 'test.mp4'); form.set('model', 'medium'); form.set('language', 'English'); return request('/upload', { method: 'POST', body: form, headers: licensed ? { Cookie: 'license=test-key' } : {} }); };
-  t.after(async () => { await stop(other); await stop(server); await db.end(); fs.rmSync(dir, { recursive: true, force: true }); });
+  t.after(async () => { await stop(other); await stop(worker); await stop(web); await stop(server); await db.end(); fs.rmSync(dir, { recursive: true, force: true }); });
   try {
-    server = start();
+    server = start(); web = start('web'); worker = start('worker');
     await until(() => request('/health').then(r => r.ok).catch(() => false));
     await db.query('TRUNCATE subtitle_jobs,subtitle_sessions,subtitle_quotas CASCADE');
     const results = await Promise.all([upload(), upload(), upload(), upload()]);
@@ -38,8 +38,7 @@ test('durable quota, reconnect, restart, cancellation and worker exclusion', { t
     await wait(id, 'processing');
     // No observer has ever attached. Job continues and state is queryable repeatedly.
     assert.equal((await job(id)).status, 'processing');
-    other = start('39118');
-    await until(() => fetch('http://127.0.0.1:39118/health').then(r => r.ok).catch(() => false));
+    other = start('worker');
     const queued = (await (await upload(true)).json()).jobId;
     await delay(600);
     assert.equal((await job(queued)).status, 'queued');
@@ -47,8 +46,8 @@ test('durable quota, reconnect, restart, cancellation and worker exclusion', { t
     assert.equal((await db.query("SELECT count(*)::int AS n FROM subtitle_jobs WHERE status='processing'")).rows[0].n, 1);
     await stop(other); other = null;
     // Abrupt server death: supervisor kills script, next owner fails interrupted row.
-    server.kill('SIGKILL'); await once(server, 'exit');
-    server = start();
+    worker.kill('SIGKILL'); await once(worker, 'exit');
+    worker = start('worker');
     await until(() => request('/health').then(r => r.ok).catch(() => false));
     await wait(id, 'error');
     assert.equal((await (await request('/license/status')).json()).remaining, 0);
@@ -57,7 +56,7 @@ test('durable quota, reconnect, restart, cancellation and worker exclusion', { t
     write('release', '');
     const session = (await (await upload(true)).json()).jobId;
     await wait(session, 'transcribed');
-    await stop(server); server = start();
+    await stop(web); web = start('web');
     await until(() => request('/health').then(r => r.ok).catch(() => false));
     assert.equal((await request(`/sessions/${session}`)).status, 200);
     assert.match(await (await request(`/srt/${session}`)).text(), /Hello/);
@@ -66,6 +65,10 @@ test('durable quota, reconnect, restart, cancellation and worker exclusion', { t
     assert.deepEqual(renders.map(r => r.status).sort(), [200,409]);
     const render = (await renders.find(r => r.status === 200).json()).jobId;
     await wait(render, 'processing');
+    // Restart both HTTP processes during the heavy task; the separate worker keeps its slot.
+    await stop(web); await stop(server); web = start('web'); server = start();
+    await until(() => request('/health').then(r => r.ok).catch(() => false));
+    assert.equal((await job(render)).status, 'processing');
     await request(`/jobs/${render}/cancel`, { method: 'POST' });
     await wait(render, 'cancelled');
     write('release-burn', '');
@@ -74,5 +77,18 @@ test('durable quota, reconnect, restart, cancellation and worker exclusion', { t
     assert.equal(await (await request(`/outputs/${done.outputFile}`)).text(), 'final');
     assert.equal((await (await request(`/sessions/${session}`)).json()).renderJobId, retry);
     assert.equal((await request('/jobs/not-a-uuid')).status, 404);
+    const history = await (await request(`/sessions/${session}/versions`)).json();
+    assert.equal(history.length, 3);
+    assert.equal(await (await request(`/sessions/${session}/versions/1`)).text(), '1\n00:00:00,000 --> 00:00:01,000\nHello\n');
+    assert.equal(await (await request(`/sessions/${session}/versions/3`)).text(), 'final');
+    assert.equal(history[0].renders[0].outputFile, done.outputFile);
+    const earlierOutput = done.outputFile;
+    const next = (await (await apply('fourth')).json()).jobId;
+    const nextDone = await wait(next, 'done');
+    assert.notEqual(nextDone.outputFile, earlierOutput);
+    assert.equal(await (await request(`/outputs/${earlierOutput}`)).text(), 'final');
+    assert.equal(await (await request(`/outputs/${nextDone.outputFile}`)).text(), 'fourth');
+    assert.equal((await request('/apply', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{broken' })).status, 400);
+    assert.equal((await request('/apply', { method: 'POST', body: 'x'.repeat(3 * 1024 * 1024) })).status, 413);
   } catch (err) { console.error(logs); throw err; }
 });

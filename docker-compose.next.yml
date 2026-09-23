@@ -21,9 +21,15 @@ services:
       postgres:
         condition: service_healthy
   web:
-    build: ./web
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    env_file:
+      - .env
     environment:
       MEDIA_API_URL: http://subtitle-service:3000
+      DATABASE_URL: postgres://subtitles:${POSTGRES_PASSWORD}@postgres:5432/subtitles
+      UPLOAD_DIR: /app/uploads
       SITE_URL: ${SITE_URL:-}
     restart: unless-stopped
     init: true
@@ -31,6 +37,29 @@ services:
     expose:
       - '3001'
     mem_limit: 512m
+
+  worker:
+    build: .
+    image: subtitle-service:latest
+    command: ["node", "src/durable/worker-main.js"]
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://subtitles:${POSTGRES_PASSWORD}@postgres:5432/subtitles
+      UPLOAD_DIR: /app/uploads
+    volumes:
+      - subtitle-uploads:/app/uploads
+      - whisper-models:/app/.cache
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    init: true
+    cpus: "4.0"
+    mem_limit: 12g
+    stop_grace_period: 15s
+    healthcheck:
+      disable: true
 
   gateway:
     image: nginx:stable-alpine

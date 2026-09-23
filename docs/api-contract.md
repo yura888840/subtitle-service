@@ -82,3 +82,12 @@ GET `/sessions/:id` adds `durable` and `renderJobId`. WebSocket connections are
 observers only: they may reconnect and never cancel jobs on disconnect. Queued
 jobs survive restarts; interrupted processing becomes a terminal error. Quotas
 are UTC-day PostgreSQL counters, atomically committed with accepted upload jobs.
+
+### Versioned split-process mode (step 7)
+
+Ordinary endpoints above are Next.js Route Handlers. Uploads, files and optional
+WebSocket observation stay in the media service; the worker runs separately.
+POST `/apply` also returns `version`. Session responses add `versioned: true`.
+GET `/sessions/:id/versions` lists immutable SRT versions with associated renders.
+GET `/sessions/:id/versions/:version` returns the exact saved SRT for that version.
+Render completion adds `version`; unique output URLs remain stable until expiry.

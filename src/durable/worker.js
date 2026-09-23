@@ -67,8 +67,9 @@ async function startWorker() {
             if (job.stage === 'transcribe') {
               const srt = await fs.readFile(job.srtPath, 'utf8');
               await c.query('UPDATE subtitle_sessions SET video_path=$2,srt_path=$3,srt=$4 WHERE id=$1', [job.sessionId, job.videoPath, job.srtPath, srt]);
+              await c.query('INSERT INTO subtitle_versions(session_id,version,srt) VALUES($1,1,$2) ON CONFLICT DO NOTHING', [job.sessionId, srt]);
               result = { status: 'transcribed', sessionId: job.sessionId, videoFile: path.basename(job.videoPath), srtFile: path.basename(job.srtPath) };
-            } else result = { status: 'done', outputFile: path.basename(job.outputPath) };
+            } else result = { status: 'done', outputFile: path.basename(job.outputPath), version: job.version };
             await c.query("UPDATE subtitle_jobs SET status='done',result=$2,updated_at=now() WHERE id=$1", [current.id, result]);
           });
         } catch (err) {

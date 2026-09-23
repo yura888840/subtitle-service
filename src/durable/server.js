@@ -12,7 +12,7 @@ const { getDurationSec } = require('../probe');
 const license = require('../license');
 const store = require('./store');
 const { dispatch } = require('./api');
-const { startWorker } = require('./worker');
+
 const app = express();
 app.disable('x-powered-by');
 // Trust only the local gateway, not arbitrary client forwarding chains.
@@ -93,6 +93,7 @@ app.post('/upload', upload.single('video'), async (req, res) => {
 
 app.use(async (req, res) => {
   try {
+    if (req.path !== '/health') return res.status(404).json({ error: 'Use the Next.js gateway for this API.' });
     const result = await dispatch(req.method, req.path, { body: req.body, ip: req.ip, cookie: req.headers.cookie });
     res.set(result.headers).status(result.status).send(result.body);
   } catch (err) { res.status(err.status || 503).json({ error: err.status ? err.message : 'Service temporarily unavailable.' }); }
@@ -116,8 +117,7 @@ wss.on('connection', (ws, req) => {
 });
 async function main() {
   await store.migrate();
-  const worker = await startWorker();
-  worker.finished.catch(err => { console.error(err); process.exit(1); });
+
   server.listen(cfg.PORT, cfg.HOST);
   let stopping = false;
   const stop = async () => {
@@ -125,7 +125,7 @@ async function main() {
     const deadline = setTimeout(() => process.exit(1), 10000); deadline.unref();
     for (const ws of wss.clients) ws.close(1001, 'Restarting');
     server.close();
-    await worker.stop(); await store.pool.end(); process.exit(0);
+    await store.pool.end(); process.exit(0);
   };
   process.on('SIGTERM', stop); process.on('SIGINT', stop);
 }

@@ -16,8 +16,9 @@ export async function testDurableBrowser(base) {
     await page.getByRole('button', { name: 'Cancel job' }).click();
     await expect(page.locator('main').getByRole('alert')).toContainText('cancelled');
     status = 'processing';
-    await page.route('**/sessions/*', route => route.fulfill({ json: { sessionId: id, videoFile: 'fixture.mp4', durable: true, renderJobId: id } }));
+    await page.route('**/sessions/*', route => route.fulfill({ json: { sessionId: id, videoFile: 'fixture.mp4', durable: true, versioned: true, renderJobId: id } }));
     await page.route('**/srt/*', route => route.fulfill({ body: '1\n00:00:00,000 --> 00:00:01,000\nSaved edit\n' }));
+    await page.route('**/sessions/*/versions', route => route.fulfill({ json: [{ version: 1, renders: [{ jobId: id, status: 'done', outputFile: 'old.mp4' }] }] }));
     await page.goto(`${base}/editor?sessionId=${id}`);
     await expect(page.locator('#cue-0')).toHaveValue('Saved edit');
     await expect(page.locator('#applyBtn')).toBeDisabled();
@@ -26,6 +27,8 @@ export async function testDurableBrowser(base) {
     await page.route(`**/jobs/${id}`, route => route.fulfill({ json: { status: 'done', outputFile: 'result.mp4', durable: true } }));
     await expect(page.locator('#downloadVideoLink')).toBeVisible();
     await expect(page.locator('#applyBtn')).toBeEnabled();
+    await expect(page.getByRole('region', { name: 'Version history' }).getByRole('link', { name: 'SRT' })).toHaveAttribute('href', `/sessions/${id}/versions/1`);
+    await expect(page.getByRole('region', { name: 'Version history' }).getByRole('link', { name: 'Video', exact: true })).toHaveAttribute('href', '/outputs/old.mp4');
     console.log('Durable browser checks passed: refresh restores task/render, explicit cancellation, saved text and recovered result.');
   } finally { await browser.close(); }
 }

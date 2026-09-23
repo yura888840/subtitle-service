@@ -1,8 +1,10 @@
+import path from 'node:path';
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  outputFileTracingRoot: process.cwd(),
+  outputFileTracingRoot: path.resolve(process.cwd(), ".."),
+  serverExternalPackages: ["pg"],
   poweredByHeader: false,
   async redirects() {
     return [
@@ -14,7 +16,7 @@ const nextConfig: NextConfig = {
     ];
   },
   // The media service stays behind Nginx. Never proxy uploads or WS through Next.
-  turbopack: { root: process.cwd() },
+  turbopack: { root: path.resolve(process.cwd(), "..") },
 };
 
 export default nextConfig;
