@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { PersistentJob } from './persistent-job';
 import { useEffect, useRef, useState } from 'react';
 import { editorCopy } from '@/lib/editor-copy';
 import { parseSrt, serializeSrt, type Cue } from '@/lib/srt';
@@ -11,6 +12,8 @@ const basename = (value: unknown): value is string => typeof value === 'string' 
 
 export function SubtitleEditor({ sessionId, lang }: { sessionId: string; lang: 'en' | 'uk' }) {
   const c = editorCopy[lang];
+  const [durable, setDurable] = useState(false);
+  const [renderJob, setRenderJob] = useState('');
   const [cues, setCues] = useState<Cue[]>([]);
   const [video, setVideo] = useState('');
   const [loadError, setLoadError] = useState(false);
@@ -26,7 +29,7 @@ export function SubtitleEditor({ sessionId, lang }: { sessionId: string; lang: '
   const request = useRef<AbortController | null>(null);
   const alive = useRef(false);
   const running = useRef(false);
-  const busy = ['connecting', 'queued', 'burn'].includes(status.kind);
+  const busy = !!renderJob || ['connecting', 'queued', 'burn'].includes(status.kind);
   let srt = '';
   try { srt = serializeSrt(cues); } catch { /* Validation is displayed beside the controls. */ }
 
@@ -44,6 +47,8 @@ export function SubtitleEditor({ sessionId, lang }: { sessionId: string; lang: '
         if (!subtitles.ok) throw new Error('Subtitles unavailable');
         const parsed = parseSrt(await subtitles.text());
         if (controller.signal.aborted) return;
+        setDurable(!!data.durable);
+        if (data.renderJobId) { setRenderJob(data.renderJobId); running.current = true; }
         setCues(parsed); setVideo(data.videoFile); setLoadError(false);
       } catch { if (!controller.signal.aborted) setLoadError(true); }
     }
@@ -79,6 +84,7 @@ export function SubtitleEditor({ sessionId, lang }: { sessionId: string; lang: '
       if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : c.failed);
       if (!uuid.test(data.jobId)) throw new Error(c.failed);
       if (!alive.current || controller.signal.aborted) return;
+      if (data.durable) { setRenderJob(data.jobId); return; }
       const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?jobId=${encodeURIComponent(data.jobId)}`);
       socket.current = ws;
       let finished = false;
@@ -129,8 +135,13 @@ export function SubtitleEditor({ sessionId, lang }: { sessionId: string; lang: '
         <button disabled={!srt} onClick={downloadSrt}>{c.srt}</button>
         {output && <a id="downloadVideoLink" className="button" href={`/outputs/${encodeURIComponent(output)}`} download>{c.video}</a>}
       </div>
-      {status.kind !== 'idle' && <section className="upload-status" role={status.kind === 'error' ? 'alert' : 'status'}>{status.kind === 'error' ? status.message : status.kind === 'queued' ? `${c.queued}: ${status.position}` : c[status.kind]}</section>}
-      <p className="hint">{c.keepOpen}</p>
+      {renderJob && <PersistentJob jobId={renderJob} lang={lang} onTerminal={job => {
+        setRenderJob(''); running.current = false;
+        if (job.status === 'done' && basename(job.outputFile)) { setOutput(job.outputFile); setStatus({ kind: 'done' }); }
+        else setStatus({ kind: 'error', message: job.message || c.failed });
+      }} />}
+      {!renderJob && status.kind !== 'idle' && <section className="upload-status" role={status.kind === 'error' ? 'alert' : 'status'}>{status.kind === 'error' ? status.message : status.kind === 'queued' ? `${c.queued}: ${status.position}` : c[status.kind]}</section>}
+      <p className="hint">{durable ? (lang === 'uk' ? 'Обробка продовжується після закриття сторінки.' : 'Rendering continues after closing the page.') : c.keepOpen}</p>
       {output && support && <p>{c.support}: <a href={support.url} target="_blank" rel="noopener noreferrer">{support.name}</a></p>}
     </section>}
     <Link id="resetBtn" href={lang === 'uk' ? '/uk/studio' : '/studio'}>{c.reset}</Link>

@@ -2,6 +2,7 @@
 // Real HTTP/WS and Nginx routing; stub media commands avoid Whisper downloads.
 import assert from 'node:assert/strict';
 import { testUploadBrowser } from './upload-browser-smoke.mjs';
+import { testDurableBrowser } from './durable-browser-smoke.mjs';
 import { testEditorBrowser } from './editor-browser-smoke.mjs';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
@@ -141,6 +142,7 @@ try {
   assert.equal(await (await request(`/outputs/${done.outputFile}`)).text(), srt);
   await testUploadBrowser(base);
   await testEditorBrowser(base);
+  await testDurableBrowser(base);
   console.log('Gateway smoke passed: Next page/assets, legacy pages, API, cookie, 2 MB upload, WS, Range and render download.');
 } finally {
   sockets.forEach(ws => ws.close());

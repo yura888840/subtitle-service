@@ -1,5 +1,25 @@
 # Opt-in migration stack: docker compose -f docker-compose.yml -f docker-compose.next.yml up -d --build
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: subtitles
+      POSTGRES_DB: subtitles
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - subtitle-db:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U subtitles -d subtitles"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  subtitle-service:
+    environment:
+      DATABASE_URL: postgres://subtitles:${POSTGRES_PASSWORD}@postgres:5432/subtitles
+    depends_on:
+      postgres:
+        condition: service_healthy
   web:
     build: ./web
     environment:
@@ -24,3 +44,6 @@ services:
         condition: service_healthy
       subtitle-service:
         condition: service_healthy
+
+volumes:
+  subtitle-db:

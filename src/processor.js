@@ -14,6 +14,7 @@ let cancelRequested = false;
  */
 function killTree(child, signal) {
   if (!child || child.killed) return;
+  if (child.supervised) { child.stdin.end(); return; }
   try {
     process.kill(-child.pid, signal); // negative pid = process group
   } catch {
@@ -34,10 +35,13 @@ function runScript(scriptPath, args) {
 
     // detached: true puts bash + all its children into their own process
     // group, so we can kill the entire tree at once.
-    const child = spawn('bash', [scriptPath, ...args], {
-      stdio: ['ignore', 'pipe', 'pipe'],
-      detached: true
+    const supervised = !!process.env.DATABASE_URL;
+    const child = spawn(supervised ? 'python3' : 'bash', supervised ? [require('path').join(__dirname, '../scripts/supervise.py'), scriptPath, ...args] : [scriptPath, ...args], {
+      stdio: [supervised ? 'pipe' : 'ignore', 'pipe', 'pipe'],
+      detached: !supervised
     });
+    child.supervised = supervised;
+    child.stdin?.on('error', () => {});
     currentChild = child;
 
     let stderrTail = '';

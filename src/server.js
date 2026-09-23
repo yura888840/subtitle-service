@@ -1,5 +1,7 @@
 'use strict';
 
+if (process.env.DATABASE_URL) { require('./durable/server'); } else {
+
 const express = require('express');
 const http = require('http');
 const path = require('path');
@@ -359,3 +361,5 @@ function shutdown(signal) {
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
+
+}

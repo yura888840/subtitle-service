@@ -71,3 +71,14 @@ queued/running conflicts, cancellation, failure/retry and late WS attachment.
 Stub output is deliberately not an actual MP4. Before deploying media changes,
 repeat upload → edit → render → download → re-edit on a real short video, check
 playback/audio/subtitles, and verify both old and new rendered outputs.
+
+
+### Durable mode (`DATABASE_URL`)
+
+Accepted uploads/applies add `durable: true`. GET `/jobs/:id` returns the current
+queued/processing/terminal snapshot at any time until session expiry. POST
+`/jobs/:id/cancel` requests explicit cancellation (terminal calls are idempotent).
+GET `/sessions/:id` adds `durable` and `renderJobId`. WebSocket connections are
+observers only: they may reconnect and never cancel jobs on disconnect. Queued
+jobs survive restarts; interrupted processing becomes a terminal error. Quotas
+are UTC-day PostgreSQL counters, atomically committed with accepted upload jobs.
