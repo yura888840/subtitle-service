@@ -43,6 +43,7 @@ test('durable quota, reconnect, restart, cancellation and worker exclusion', { t
     const queued = (await (await upload(true)).json()).jobId;
     await delay(600);
     assert.equal((await job(queued)).status, 'queued');
+    assert.equal((await job(queued)).position, 1);
     assert.equal((await db.query("SELECT count(*)::int AS n FROM subtitle_jobs WHERE status='processing'")).rows[0].n, 1);
     await stop(other); other = null;
     // Abrupt server death: supervisor kills script, next owner fails interrupted row.

@@ -80,7 +80,7 @@ async function getJob(id) {
   if (job.result) return { jobId: id, ...job.result, durable: true };
   const result = { jobId: id, sessionId: job.session_id, status: job.status, stage: job.payload.phase || job.stage, durable: true };
   if (job.status === 'queued') {
-    const pos = await pool.query("SELECT count(*)::int AS n FROM subtitle_jobs WHERE status='queued' AND (created_at,id)<=($1,$2)", [job.created_at, job.id]);
+    const pos = await pool.query("SELECT count(*)::int AS n FROM subtitle_jobs WHERE status='queued' AND (created_at,id)<=(SELECT created_at,id FROM subtitle_jobs WHERE id=$1)", [job.id]);
     result.position = pos.rows[0].n;
   }
   return result;
