@@ -22,7 +22,7 @@ test('durable quota, reconnect, restart, cancellation and worker exclusion', { t
   const env = { ...process.env, PORT: '39117', HOST: '127.0.0.1', UPLOAD_DIR: dir, PATH: `${dir}:${process.env.PATH}`, TRANSCRIBE_SCRIPT: path.join(dir, 'transcribe.sh'), BURN_SCRIPT: path.join(dir, 'burn.sh'), DAILY_LIMIT: '1', LICENSE_KEY: 'test-key' };
   const start = (role = 'media') => { const child = spawn(process.execPath, [role === 'worker' ? 'src/durable/worker-main.js' : role === 'web' ? 'web/.next/standalone/web/server.js' : 'src/server.js'], { cwd: root, env: { ...env, PORT: role === 'web' ? '39119' : '39117', HOSTNAME: '127.0.0.1' }, stdio: ['ignore', 'pipe', 'pipe'] }); child.stdout.on('data', b => { logs += b; }); child.stderr.on('data', b => { logs += b; }); return child; };
   const stop = async child => { if (child && child.exitCode === null) { child.kill('SIGTERM'); await once(child, 'exit'); } };
-  const request = (url, init) => fetch(`http://127.0.0.1:${url === '/upload' || url.startsWith('/outputs/') ? '39117' : '39119'}${url}`, init);
+  const request = (url, init) => fetch(`http://127.0.0.1:${url === '/upload' || url.startsWith('/outputs/') ? '39117' : '39119'}${url}`, { ...init, headers: { 'X-Real-IP': '127.0.0.1', ...init?.headers } });
   const job = async id => (await request(`/jobs/${id}`)).json();
   const wait = (id, status) => until(async () => { const value = await job(id); return value.status === status && value; });
   const upload = async (licensed = false) => { const form = new FormData(); form.set('video', new Blob(['fixture']), 'test.mp4'); form.set('model', 'medium'); form.set('language', 'English'); return request('/upload', { method: 'POST', body: form, headers: licensed ? { Cookie: 'license=test-key' } : {} }); };
