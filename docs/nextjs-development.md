@@ -165,3 +165,39 @@ with the existing server cancellation behavior; no reconnect/resume is introduce
 CI tests SRT round trips and invalid input, upload through two real render/download
 cycles using stub media commands, reload, local SRT export, playback cue selection,
 HTTP/WS errors, duplicate submits, cleanup, malformed SRT retry and Ukrainian/mobile UI.
+
+
+## Durable state (step 6)
+
+The Next.js Compose stack now includes PostgreSQL 16. Set a unique URL-safe
+`POSTGRES_PASSWORD` in `.env`. The `subtitle-db` volume stores sessions, jobs and
+UTC daily quotas. Do not delete this volume or the media volume on upgrade.
+Schema initialization is additive and serialized with a database advisory lock.
+Back up both PostgreSQL and media together. Existing in-memory jobs/sessions cannot
+be migrated: drain the old service before switching; old files remain until TTL.
+
+`DATABASE_URL` selects durable mode; without it the backend-only implementation
+and its compatibility tests remain available. Do not use multiple legacy instances.
+In durable mode, quota consumption and enqueue commit in one transaction. Concurrent
+uploads cannot exceed the limit. Cancellation does not refund quota. License cookies
+remain the existing model; random session/job IDs remain bearer capabilities.
+
+After an accepted upload, `/task?jobId=...` (or `/uk/task`) polls durable snapshots.
+Refresh/closing no longer cancels work. The editor restores saved text and its latest
+render job via `/sessions/:id`. Explicit POST `/jobs/:id/cancel` is idempotent.
+GET `/jobs/:id` is no-store. Temporary connectivity loss retries automatically.
+An HTTP upload interrupted before its acknowledgement is not resumable; this step
+persists accepted jobs, not partially uploaded bodies. Unapplied editor drafts
+remain local memory, as before.
+
+A dedicated PostgreSQL advisory lock enforces one worker across API replicas.
+After taking ownership, the worker marks interrupted processing rows as errors
+(or cancelled if requested); queued rows continue. It never blindly repeats an
+interrupted heavy task. Python supervises each process group and stops it when
+its Node owner exits. Lost DB connections stop processing. Deploy on one media
+volume/host; do not independently replicate the filesystem. TTL cleanup protects
+queued/running inputs, and deletes expired metadata before orphan files.
+
+CI uses a real PostgreSQL service to test concurrent quota claims, two competing
+workers, abrupt process restart, persisted sessions, duplicate renders, explicit
+cancellation and retry. Browser checks cover refresh/recovered results.

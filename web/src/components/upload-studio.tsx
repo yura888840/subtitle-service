@@ -155,6 +155,7 @@ export function UploadStudio({ lang }: { lang: 'en' | 'uk' }) {
         return;
       }
       if (typeof data.jobId !== 'string' || !uuid.test(data.jobId)) { fail(c.uploadError); return; }
+      if (data.durable) { router.push(`${lang === 'uk' ? '/uk/task' : '/task'}?jobId=${encodeURIComponent(data.jobId)}`); return; }
       setStatus({ kind: 'connecting' });
       try { connect(data.jobId); } catch { fail(c.connectionError); }
     };
@@ -200,7 +201,7 @@ export function UploadStudio({ lang }: { lang: 'en' | 'uk' }) {
           <button className="button" type="submit" disabled={!file || busy}>{c.upload}</button>
         </fieldset>
       </form>
-      <p className="hint">{c.keepOpen}</p>
+      <p className="hint">{options.durable ? (lang === 'uk' ? 'Після завантаження завдання зберігається.' : 'After upload, the job is saved and can be reopened.') : c.keepOpen}</p>
     </>}
     {status.kind !== 'idle' && <section className="upload-status" role={status.kind === 'error' ? 'alert' : 'status'} aria-live="polite">
       {status.kind === 'error' ? <p>{status.message}</p> : <>

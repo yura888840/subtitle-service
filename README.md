@@ -2,7 +2,7 @@
 
 Upload a video → Whisper generates English subtitles → **review and edit them next to a video player** → burn the (edited) subtitles into the video with ffmpeg → download the result.
 
-Single-worker queue: one heavy job (transcription *or* burning) runs at a time; everyone else waits in line with a live position. Closing the tab while queued removes the job. All files are deleted after 24 hours.
+Single-worker queue: one heavy job (transcription *or* burning) runs at a time; everyone else waits in line with a live position. In the durable Next.js stack, tasks survive closing/refreshing the tab; use explicit cancellation. The original backend-only mode still cancels on disconnect. All files are deleted after 24 hours.
 
 ## The two-stage workflow
 

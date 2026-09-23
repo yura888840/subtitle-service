@@ -1,4 +1,5 @@
 export type UploadOptions = {
+  durable?: boolean;
   models: string[];
   languages: { label: string; value: string; code: string }[];
   maxFileSizeMb: number;
