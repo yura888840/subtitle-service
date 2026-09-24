@@ -1,0 +1,66 @@
+# Independent staging project: no production container names, ports or volumes.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: subtitles
+      POSTGRES_DB: subtitles
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes: [staging-db:/var/lib/postgresql/data]
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U subtitles -d subtitles']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  media:
+    build: .
+    image: subtitle-staging-media:${STAGING_RELEASE:?Set immutable STAGING_RELEASE}
+    env_file: ${STAGING_ENV_FILE:?Set external STAGING_ENV_FILE}
+    environment: &runtime
+      DATABASE_URL: postgres://subtitles:${POSTGRES_PASSWORD}@postgres:5432/subtitles
+      SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET}
+      UPLOAD_DIR: /app/uploads
+    volumes: [staging-uploads:/app/uploads]
+    restart: unless-stopped
+    init: true
+    depends_on:
+      postgres: {condition: service_healthy}
+  worker:
+    image: subtitle-staging-media:${STAGING_RELEASE}
+    command: [node, src/durable/worker-main.js]
+    env_file: ${STAGING_ENV_FILE}
+    environment: *runtime
+    volumes: [staging-uploads:/app/uploads, staging-models:/app/.cache]
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 15s
+    cpus: '4.0'
+    mem_limit: 12g
+    healthcheck: {disable: true}
+    depends_on:
+      postgres: {condition: service_healthy}
+  web:
+    build: {context: ., dockerfile: web/Dockerfile}
+    image: subtitle-staging-web:${STAGING_RELEASE}
+    env_file: ${STAGING_ENV_FILE}
+    environment:
+      <<: *runtime
+      MEDIA_API_URL: http://media:3000
+    restart: unless-stopped
+    init: true
+    mem_limit: 512m
+    depends_on:
+      postgres: {condition: service_healthy}
+  gateway:
+    image: nginx:stable-alpine
+    volumes: [./nginx/staging-gateway.conf:/etc/nginx/conf.d/default.conf:ro]
+    ports: ['127.0.0.1:8081:80']
+    restart: unless-stopped
+    depends_on:
+      media: {condition: service_healthy}
+      web: {condition: service_healthy}
+volumes:
+  staging-db:
+  staging-uploads:
+  staging-models:

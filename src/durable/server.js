@@ -7,20 +7,40 @@ const { v4: uuidv4 } = require('uuid');
 const { WebSocketServer } = require('ws');
 const cfg = require('../config');
 const log = require('../logger');
-const { upload } = require('../upload');
+const { upload } = require('./upload');
 const { getDurationSec } = require('../probe');
 const license = require('../license');
 const store = require('./store');
 const { dispatch } = require('./api');
+const ownership = require('./ownership');
 
 const app = express();
 app.disable('x-powered-by');
 // Trust only the local gateway, not arbitrary client forwarding chains.
 app.set('trust proxy', 1);
+app.use((req, res, next) => {
+  if (req.method === 'POST' && req.headers.origin && req.headers.origin !== `${req.protocol}://${req.get('host')}`) return res.status(403).json({ error: 'Cross-origin request denied.' });
+  next();
+});
 app.use(express.json({ limit: `${cfg.MAX_SRT_SIZE_KB}kb` }));
-app.use('/videos', express.static(cfg.UPLOAD_DIR, { index: false }));
-app.use('/outputs', express.static(cfg.OUTPUT_DIR, { index: false }));
-app.post('/upload', upload.single('video'), async (req, res) => {
+for (const kind of ['videos', 'outputs']) {
+  app.get(`/${kind}/:file`, async (req, res) => {
+    try {
+      const file = await store.fileAccess(kind, req.params.file, ownership.owner(req.headers.cookie));
+      res.set({ 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' });
+      res.sendFile(file, { cacheControl: false }, err => {
+        if (err && !res.headersSent) res.status(404).json({ error: 'File not found.' });
+      });
+    } catch (err) { res.status(err.status || 503).json({ error: err.status ? err.message : 'Service temporarily unavailable.' }); }
+  });
+}
+app.post('/upload', (req, res, next) => {
+  try {
+    const identity = ownership.issue(req.headers.cookie); req.owner = identity.id;
+    if (identity.cookie) res.set('Set-Cookie', identity.cookie);
+    next();
+  } catch (err) { next(err); }
+}, upload.single('video'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No file received.' });
   }
@@ -81,7 +101,8 @@ app.post('/upload', upload.single('video'), async (req, res) => {
   };
 
   try {
-    await store.accept(job, req.ip, licensed);
+    if (req.aborted) return cleanupAndFail(400, { error: 'Upload interrupted.' });
+    await store.accept(job, req.ip, licensed, req.owner);
   } catch (err) { return cleanupAndFail(err.status || 503, { error: err.status ? err.message : 'Database unavailable. Try again.' }); }
 
   log.info('upload', `Accepted job ${jobId}: ${req.file.originalname} ` +
@@ -107,7 +128,7 @@ wss.on('connection', (ws, req) => {
   const poll = async () => {
     if (pending || ws.readyState !== 1) return;
     pending = true;
-    try { const snapshot = await store.getJob(id); if (ws.readyState === 1) ws.send(JSON.stringify(snapshot)); }
+    try { const snapshot = await store.getJob(id, ownership.owner(req.headers.cookie)); if (ws.readyState === 1) ws.send(JSON.stringify(snapshot)); }
     catch (err) { if (err.status === 404) ws.close(4001, 'Unknown job'); }
     finally { pending = false; }
   };
@@ -116,6 +137,7 @@ wss.on('connection', (ws, req) => {
   ws.on('error', () => {});
 });
 async function main() {
+  ownership.validate();
   await store.migrate();
 
   server.listen(cfg.PORT, cfg.HOST);

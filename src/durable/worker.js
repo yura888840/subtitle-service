@@ -100,4 +100,4 @@ async function cleanup() {
   }
   return expired.rowCount;
 }
-module.exports = { startWorker };
+module.exports = { startWorker, cleanup };

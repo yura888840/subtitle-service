@@ -33,6 +33,8 @@ async function migrate() {
       version integer NOT NULL, srt text NOT NULL, created_at timestamptz NOT NULL DEFAULT now(),
       PRIMARY KEY(session_id,version));
     ALTER TABLE subtitle_jobs ADD COLUMN IF NOT EXISTS srt_version integer;
+    ALTER TABLE subtitle_sessions ADD COLUMN IF NOT EXISTS owner_id uuid;
+    CREATE INDEX IF NOT EXISTS subtitle_session_owner ON subtitle_sessions(owner_id);
     INSERT INTO subtitle_versions(session_id,version,srt)
       SELECT id,1,srt FROM subtitle_sessions WHERE srt IS NOT NULL ON CONFLICT DO NOTHING;`);
   });
@@ -42,7 +44,8 @@ async function remaining(ip) {
   const { rows } = await pool.query("SELECT used FROM subtitle_quotas WHERE subject=$1 AND day=(now() AT TIME ZONE 'UTC')::date", [subject(ip)]);
   return Math.max(0, cfg.DAILY_LIMIT - (rows[0]?.used || 0));
 }
-async function accept(job, ip, licensed) {
+async function accept(job, ip, licensed, owner) {
+  if (!owner) throw fail(401, 'Browser session required.');
   return transaction(async c => {
     if (!licensed) {
       if (cfg.DAILY_LIMIT <= 0) throw fail(429, 'Daily limit reached.');
@@ -51,22 +54,22 @@ async function accept(job, ip, licensed) {
         WHERE subtitle_quotas.used<$2 RETURNING used`, [subject(ip), cfg.DAILY_LIMIT]);
       if (!rowCount) throw fail(429, 'Daily limit reached.');
     }
-    await c.query('INSERT INTO subtitle_sessions(id,video_path,expires_at) VALUES($1,$2,$3)', [job.jobId, job.videoPath, new Date(Date.now() + cfg.FILE_TTL_MS)]);
+    await c.query('INSERT INTO subtitle_sessions(id,video_path,expires_at,owner_id) VALUES($1,$2,$3,$4)', [job.jobId, job.videoPath, new Date(Date.now() + cfg.FILE_TTL_MS), owner]);
     await c.query("INSERT INTO subtitle_jobs(id,session_id,stage,status,payload) VALUES($1,$1,'transcribe','queued',$2)", [job.jobId, job]);
     return { jobId: job.jobId, durable: true };
   });
 }
-async function session(id, client = pool) {
+async function session(id, owner, client = pool) {
   if (!uuid.test(id)) throw fail(404, 'Session not found or expired.');
-  const { rows } = await client.query('SELECT * FROM subtitle_sessions WHERE id=$1 AND expires_at>now()', [id]);
+  const { rows } = await client.query('SELECT * FROM subtitle_sessions WHERE id=$1 AND expires_at>now() AND owner_id=$2', [id, owner || null]);
   if (!rows[0]) throw fail(404, 'Session not found or expired. Please upload the video again.');
   return rows[0];
 }
-async function apply(id, srt) {
+async function apply(id, srt, owner) {
   if (typeof srt !== 'string' || !srt.trim()) throw fail(400, 'Non-empty srt is required.');
   if (Buffer.byteLength(srt) > cfg.MAX_SRT_SIZE_KB * 1024) throw fail(413, 'Subtitles are too large.');
   return transaction(async c => {
-    const s = await session(id, c);
+    const s = await session(id, owner, c);
     await c.query('SELECT id FROM subtitle_sessions WHERE id=$1 FOR UPDATE', [id]);
     if (!s.srt_path) throw fail(409, 'Transcription is not ready.');
     const { rowCount } = await c.query("SELECT id FROM subtitle_jobs WHERE session_id=$1 AND stage='burn' AND status IN ('queued','processing')", [id]);
@@ -82,9 +85,9 @@ async function apply(id, srt) {
     return { jobId, durable: true, version };
   });
 }
-async function getJob(id) {
+async function getJob(id, owner) {
   if (!uuid.test(id)) throw fail(404, 'Job not found.');
-  const { rows } = await pool.query('SELECT j.* FROM subtitle_jobs j JOIN subtitle_sessions s ON s.id=j.session_id WHERE j.id=$1 AND s.expires_at>now()', [id]);
+  const { rows } = await pool.query('SELECT j.* FROM subtitle_jobs j JOIN subtitle_sessions s ON s.id=j.session_id WHERE j.id=$1 AND s.expires_at>now() AND s.owner_id=$2', [id, owner || null]);
   const job = rows[0];
   if (!job) throw fail(404, 'Job not found or expired.');
   if (job.result) return { jobId: id, ...job.result, durable: true };
@@ -95,22 +98,22 @@ async function getJob(id) {
   }
   return result;
 }
-async function cancel(id) {
-  await getJob(id);
+async function cancel(id, owner) {
+  await getJob(id, owner);
   await pool.query(`UPDATE subtitle_jobs SET cancel_requested=true, updated_at=now(),
     status=CASE WHEN status='queued' THEN 'cancelled' ELSE status END,
     result=CASE WHEN status='queued' THEN '{"status":"cancelled","message":"Job cancelled."}'::jsonb ELSE result END
     WHERE id=$1 AND status IN ('queued','processing')`, [id]);
-  return getJob(id);
+  return getJob(id, owner);
 }
-async function sessionView(id) {
-  const s = await session(id);
+async function sessionView(id, owner) {
+  const s = await session(id, owner);
   if (!s.srt_path) throw fail(409, 'Transcription is not ready.');
   const { rows } = await pool.query("SELECT id FROM subtitle_jobs WHERE session_id=$1 AND stage='burn' ORDER BY created_at DESC,id DESC LIMIT 1", [id]);
   return { sessionId: id, videoFile: require('path').basename(s.video_path), srtFile: require('path').basename(s.srt_path), durable: true, versioned: true, renderJobId: rows[0]?.id || null };
 }
-async function versions(id) {
-  await session(id);
+async function versions(id, owner) {
+  await session(id, owner);
   const { rows } = await pool.query(`SELECT v.version,v.created_at,
     COALESCE(jsonb_agg(jsonb_build_object('jobId',j.id,'status',j.status,'outputFile',j.result->>'outputFile') ORDER BY j.created_at)
     FILTER(WHERE j.id IS NOT NULL),'[]'::jsonb) AS renders
@@ -118,11 +121,21 @@ async function versions(id) {
     WHERE v.session_id=$1 GROUP BY v.version,v.created_at ORDER BY v.version DESC`, [id]);
   return rows;
 }
-async function versionSrt(id, version) {
-  await session(id);
+async function versionSrt(id, version, owner) {
+  await session(id, owner);
   if (!/^\d+$/.test(String(version)) || Number(version) > 2147483647) throw fail(404, 'Version not found.');
   const { rows } = await pool.query('SELECT srt FROM subtitle_versions WHERE session_id=$1 AND version=$2', [id, version]);
   if (!rows[0]) throw fail(404, 'Version not found.');
   return rows[0].srt;
 }
-module.exports = { versions, versionSrt, pool, migrate, transaction, remaining, accept, session, sessionView, apply, getJob, cancel, fail };
+async function fileAccess(kind, filename, owner) {
+  if (!owner || !/^[a-zA-Z0-9_.-]+$/.test(filename) || filename === '.' || filename === '..') throw fail(404, 'File not found.');
+  const path = require('path');
+  const full = path.join(kind === 'videos' ? cfg.UPLOAD_DIR : cfg.OUTPUT_DIR, filename);
+  const { rowCount } = await pool.query(`SELECT 1 FROM subtitle_sessions s WHERE s.owner_id=$1 AND s.expires_at>now() AND
+    (($3='videos' AND s.video_path=$2) OR ($3='outputs' AND s.srt_path=$2) OR
+     ($3='outputs' AND EXISTS(SELECT 1 FROM subtitle_jobs j WHERE j.session_id=s.id AND j.status='done' AND j.payload->>'outputPath'=$2)))`, [owner, full, kind]);
+  if (!rowCount) throw fail(404, 'File not found.');
+  return full;
+}
+module.exports = { fileAccess, versions, versionSrt, pool, migrate, transaction, remaining, accept, session, sessionView, apply, getJob, cancel, fail };

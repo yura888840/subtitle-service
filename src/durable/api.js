@@ -2,13 +2,17 @@
 const store = require('./store');
 const cfg = require('../config');
 const license = require('../license');
+const ownership = require('./ownership');
 async function dispatch(method, pathname, { body = {}, ip = '', cookie = '' } = {}) {
   const headers = { 'Cache-Control': 'no-store' };
   const licensed = license.hasValidLicense({ headers: { cookie } });
+  const owner = ownership.owner(cookie);
   let result;
   if (method === 'GET' && pathname === '/health') {
     await store.pool.query('SELECT 1'); result = { status: 'ok', durable: true };
   } else if (method === 'GET' && pathname === '/options') {
+    const identity = ownership.issue(cookie);
+    if (identity.cookie) headers['Set-Cookie'] = identity.cookie;
     result = { models: cfg.MODELS, languages: cfg.LANGUAGES, maxFileSizeMb: cfg.MAX_FILE_SIZE_MB, allowedExtensions: cfg.ALLOWED_EXTENSIONS, maxDurationSec: cfg.MAX_VIDEO_DURATION_SEC, dailyLimit: cfg.DAILY_LIMIT, tgContact: cfg.TG_CONTACT, support: cfg.SUPPORT_URL ? { url: cfg.SUPPORT_URL, name: cfg.SUPPORT_LINK_NAME } : null, durable: true };
   } else if (method === 'GET' && pathname === '/legal') {
     result = { legal: cfg.LEGAL, tgContact: cfg.TG_CONTACT, retentionHours: cfg.FILE_TTL_MS / 3600000, dailyLimit: cfg.DAILY_LIMIT, licenseTtlDays: cfg.LICENSE_TTL_DAYS };
@@ -20,22 +24,22 @@ async function dispatch(method, pathname, { body = {}, ip = '', cookie = '' } = 
     license.setLicenseCookie({ setHeader: (key, value) => { headers[key] = value; } }, key);
     result = { ok: true, ttlDays: cfg.LICENSE_TTL_DAYS };
   } else if (method === 'POST' && pathname === '/apply') {
-    result = await store.apply(String(body.jobId || ''), body.srt);
+    result = await store.apply(String(body.jobId || ''), body.srt, owner);
   } else if (method === 'GET' && /^\/sessions\/[^/]+\/versions$/.test(pathname)) {
-    result = await store.versions(pathname.split('/')[2]);
+    result = await store.versions(pathname.split('/')[2], owner);
   } else if (method === 'GET' && /^\/sessions\/[^/]+\/versions\/[^/]+$/.test(pathname)) {
-    result = await store.versionSrt(pathname.split('/')[2], pathname.split('/')[4]);
+    result = await store.versionSrt(pathname.split('/')[2], pathname.split('/')[4], owner);
     headers['Content-Type'] = 'application/x-subrip; charset=utf-8';
   } else if (method === 'GET' && /^\/sessions\/[^/]+$/.test(pathname)) {
-    result = await store.sessionView(pathname.split('/')[2]);
+    result = await store.sessionView(pathname.split('/')[2], owner);
   } else if (method === 'GET' && /^\/srt\/[^/]+$/.test(pathname)) {
-    const s = await store.session(pathname.split('/')[2]);
+    const s = await store.session(pathname.split('/')[2], owner);
     if (s.srt == null) throw store.fail(409, 'Transcription is not ready.');
     headers['Content-Type'] = 'application/x-subrip; charset=utf-8'; result = s.srt;
   } else if (method === 'GET' && /^\/jobs\/[^/]+$/.test(pathname)) {
-    result = await store.getJob(pathname.split('/')[2]);
+    result = await store.getJob(pathname.split('/')[2], owner);
   } else if (method === 'POST' && /^\/jobs\/[^/]+\/cancel$/.test(pathname)) {
-    result = await store.cancel(pathname.split('/')[2]);
+    result = await store.cancel(pathname.split('/')[2], owner);
   } else throw store.fail(404, 'Not found.');
   return { status: 200, body: result, headers };
 }
