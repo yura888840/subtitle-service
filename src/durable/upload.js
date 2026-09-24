@@ -23,7 +23,7 @@ const storage = {
   },
   _removeFile(_req, file, cb) { fs.unlink(file.path, err => cb(err?.code === 'ENOENT' ? null : err)); }
 };
-const upload = multer({ storage, limits: { fileSize: cfg.MAX_FILE_SIZE_MB * 1024 * 1024, files: 1, fields: 2, parts: 3, fieldSize: 1024 },
+const upload = multer({ storage, limits: { fileSize: cfg.MAX_FILE_SIZE_MB * 1024 * 1024, files: 1, fields: 2, parts: 4, fieldSize: 1024 },
   fileFilter(_req, file, cb) { cb(cfg.ALLOWED_EXTENSIONS.includes(path.extname(file.originalname).toLowerCase()) ? null : new Error('Unsupported video format.'), true); }
 });
 module.exports = { upload };
