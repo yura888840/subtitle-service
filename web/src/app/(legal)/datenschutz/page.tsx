@@ -95,6 +95,7 @@ export default async function Page() {
     <tr><td className="mono">license</td><td>Cookie (httpOnly)</td><td>Erkennt einen gültigen Lizenzschlüssel, um das Tageslimit aufzuheben</td><td className="mono"><span id="lic1">{config.licenseTtlDays}</span> Tage</td></tr>
     <tr><td className="mono">pref_language</td><td>Cookie</td><td>Merkt sich die zuletzt gewählte Video-Sprache</td><td className="mono">180 Tage</td></tr>
     <tr><td className="mono">pref_model</td><td>Cookie</td><td>Merkt sich das zuletzt gewählte Modell</td><td className="mono">180 Tage</td></tr>
+    <tr><td className="mono">subtitle_owner</td><td>HttpOnly-Cookie</td><td>Ordnet Videos und Aufträge diesem Browser zu und schützt den Zugriff</td><td className="mono">30 Tage</td></tr>
     <tr><td className="mono">lang</td><td>localStorage</td><td>Merkt sich die Sprache der Benutzeroberfläche (DE/EN/UK)</td><td className="mono">bis zur Löschung</td></tr>
     <tr><td className="mono">cookie_notice</td><td>localStorage</td><td>Merkt sich, dass Sie den Hinweis-Banner geschlossen haben</td><td className="mono">bis zur Löschung</td></tr>
   </tbody></table></div>
@@ -118,7 +119,7 @@ export default async function Page() {
   <h2 id="s8"><span className="n">08</span> Speicherdauer</h2>
   <ul>
     <li><strong>Hochgeladene Videos, erzeugte Untertitel und Ergebnisdateien:</strong> automatische Löschung spätestens <span id="ret2" className="mono">{config.retentionHours}</span> Stunden nach dem Upload.</li>
-    <li><strong>Laufende Verarbeitung:</strong> Schließen Sie den Browser-Tab, wird eine laufende Verarbeitung abgebrochen und die zugehörige Datei entfernt.</li>
+    <li><strong>Laufende Verarbeitung:</strong> Aufträge werden unabhängig vom Browser-Tab verarbeitet. Sie können einen Auftrag ausdrücklich abbrechen. Dateien aktiver Aufträge werden von der automatischen Löschung ausgenommen, bis die Verarbeitung beendet ist.</li>
     <li><strong>IP-Tageszähler:</strong> Rücksetzung spätestens täglich.</li>
     <li><strong>Cookies / localStorage:</strong> gemäß Tabelle in Abschnitt 5.</li>
   </ul>

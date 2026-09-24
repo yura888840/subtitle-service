@@ -91,3 +91,14 @@ POST `/apply` also returns `version`. Session responses add `versioned: true`.
 GET `/sessions/:id/versions` lists immutable SRT versions with associated renders.
 GET `/sessions/:id/versions/:version` returns the exact saved SRT for that version.
 Render completion adds `version`; unique output URLs remain stable until expiry.
+
+### Step 8: browser ownership
+
+GET `/options` issues a signed HttpOnly `subtitle_owner` cookie when absent.
+POST `/upload` also issues it for direct API clients. Clients must retain it.
+All session/job/SRT/version endpoints and `/videos/:file`, `/outputs/:file` require
+that owner cookie; unknown, expired and foreign resources return 404. Range and
+HEAD requests follow the same file boundary. WS observation requires the cookie.
+Cross-origin browser POST requests are rejected. Mutating endpoints still require
+the owner even when the request is otherwise same-origin. These guarantees apply
+to the durable Next.js stack; legacy backend-only mode is not the public target.

@@ -1,0 +1,59 @@
+name: Staging deployment
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        type: choice
+        options: [deploy, rollback]
+        default: deploy
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: subtitle-staging
+  cancel-in-progress: false
+jobs:
+  staging:
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate release before transfer
+        run: |
+          npm ci
+          npm test
+          npm ci --prefix web
+          npm run lint --prefix web
+          npm run typecheck --prefix web
+          npm run build --prefix web
+      - name: Transfer and activate immutable staging release
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_HOST }}
+          STAGING_USER: ${{ secrets.STAGING_USER }}
+          STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          STAGING_KNOWN_HOSTS: ${{ secrets.STAGING_KNOWN_HOSTS }}
+          STAGING_ROOT: ${{ vars.STAGING_ROOT }}
+          OPERATION: ${{ inputs.operation }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$STAGING_HOST" =~ ^[a-zA-Z0-9.-]+$ && "$STAGING_USER" =~ ^[a-zA-Z0-9_-]+$ ]]
+          [[ "$STAGING_ROOT" = /* && "$STAGING_ROOT" =~ ^[a-zA-Z0-9_/-]+$ ]]
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          umask 077
+          mkdir -p ~/.ssh
+          printf '%s\n' "$STAGING_SSH_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$STAGING_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          trap 'rm -f ~/.ssh/id_ed25519' EXIT
+          target="$STAGING_USER@$STAGING_HOST"
+          if [[ "$OPERATION" = rollback ]]; then
+            ssh -o BatchMode=yes "$target" "bash '$STAGING_ROOT/current/scripts/staging-release.sh' rollback '$STAGING_ROOT'"
+          else
+            ssh -o BatchMode=yes "$target" "mkdir -p '$STAGING_ROOT/releases/$GITHUB_SHA'"
+            git archive "$GITHUB_SHA" | ssh -o BatchMode=yes "$target" "tar -x -C '$STAGING_ROOT/releases/$GITHUB_SHA'"
+            ssh -o BatchMode=yes "$target" "bash '$STAGING_ROOT/releases/$GITHUB_SHA/scripts/staging-release.sh' deploy '$STAGING_ROOT' '$GITHUB_SHA'"
+          fi

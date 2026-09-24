@@ -48,3 +48,6 @@ jobs:
         run: |
           cp .env.example .env
           docker compose -f docker-compose.yml -f docker-compose.next.yml config --quiet
+          STAGING_ENV_FILE="$PWD/.env" STAGING_RELEASE=0123456789012345678901234567890123456789 docker compose --env-file .env -f docker-compose.staging.yml config --quiet
+          bash -n scripts/staging-release.sh
+          diff -u <(sed 's/server subtitle-service:3000;/server media:3000;/' nginx/next-gateway.conf) nginx/staging-gateway.conf

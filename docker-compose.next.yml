@@ -17,6 +17,7 @@ services:
   subtitle-service:
     environment:
       DATABASE_URL: postgres://subtitles:${POSTGRES_PASSWORD}@postgres:5432/subtitles
+      SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET to a random value of at least 32 characters}
     depends_on:
       postgres:
         condition: service_healthy
@@ -29,6 +30,7 @@ services:
     environment:
       MEDIA_API_URL: http://subtitle-service:3000
       DATABASE_URL: postgres://subtitles:${POSTGRES_PASSWORD}@postgres:5432/subtitles
+      SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET to a random value of at least 32 characters}
       UPLOAD_DIR: /app/uploads
       SITE_URL: ${SITE_URL:-}
     restart: unless-stopped
@@ -46,6 +48,7 @@ services:
       - .env
     environment:
       DATABASE_URL: postgres://subtitles:${POSTGRES_PASSWORD}@postgres:5432/subtitles
+      SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET to a random value of at least 32 characters}
       UPLOAD_DIR: /app/uploads
     volumes:
       - subtitle-uploads:/app/uploads

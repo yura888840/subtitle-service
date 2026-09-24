@@ -247,3 +247,11 @@ The inner gateway trusts X-Real-IP only from loopback and the default Docker
 provided host config). Adjust the trusted subnet for custom networks. This keeps
 upload quota claims and Next.js quota display keyed to the same client, rather
 than to the host proxy address. Never expose the internal gateway on a public bind.
+
+## Cutover readiness (step 8)
+
+See [staging-cutover.md](staging-cutover.md) for ownership, streaming/TTL gates,
+isolated staging deployment, required GitHub settings and rollback. Session/job
+IDs are no longer sufficient for access: the browser's signed owner cookie is
+required. Set a stable SESSION_SECRET in both web and media and keep Secure cookies
+for HTTPS. The staging workflow is manual; configuring it does not deploy production.

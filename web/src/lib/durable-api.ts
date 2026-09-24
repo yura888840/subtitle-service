@@ -8,6 +8,11 @@ export async function ensureSchema() {
 export async function handle(request: Request) {
   const pathname = new URL(request.url).pathname;
   try {
+    if (request.method === 'POST' && request.headers.get('origin')) {
+      const origin = request.headers.get('origin');
+      const expected = `${request.headers.get('x-forwarded-proto') || new URL(request.url).protocol.slice(0, -1)}://${request.headers.get('host') || new URL(request.url).host}`;
+      if (origin !== expected) return Response.json({ error: 'Cross-origin request denied.' }, { status: 403 });
+    }
     // Apply bodies are bounded while streaming, including chunked requests without Content-Length.
     const limit = Number(process.env.MAX_SRT_SIZE_KB || 2048) * 1024;
     let body: unknown = {};
